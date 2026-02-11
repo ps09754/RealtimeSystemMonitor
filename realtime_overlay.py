@@ -444,6 +444,7 @@ class MetricPage:
         self.plot.setTitle(chart_title, color="#cfcfcf", size="9pt")
         self.curve = self.plot.plot(pen=pg.mkPen(color=chart_color, width=2))
         style_plot(self.plot)
+        self.plot.setFixedHeight(70)
         layout.addWidget(self.plot)
 
         details = QtWidgets.QGroupBox("Details")
@@ -488,17 +489,29 @@ class DiskPage:
         layout.addWidget(self.read_label)
         layout.addWidget(self.write_label)
 
-        self.plot = pg.PlotWidget()
-        self.plot.setBackground((20, 20, 20))
-        self.plot.showGrid(x=True, y=True, alpha=0.2)
-        self.plot.setMouseEnabled(x=False, y=False)
-        self.plot.hideButtons()
-        self.plot.setMenuEnabled(False)
-        self.plot.setTitle("Disk Throughput", color="#cfcfcf", size="9pt")
-        self.read_curve = self.plot.plot(pen=pg.mkPen(color="#ff5c5c", width=2))
-        self.write_curve = self.plot.plot(pen=pg.mkPen(color="#4aa3ff", width=2))
-        style_plot(self.plot)
-        layout.addWidget(self.plot)
+        self.plot_read = pg.PlotWidget()
+        self.plot_read.setBackground((20, 20, 20))
+        self.plot_read.showGrid(x=True, y=True, alpha=0.2)
+        self.plot_read.setMouseEnabled(x=False, y=False)
+        self.plot_read.hideButtons()
+        self.plot_read.setMenuEnabled(False)
+        self.plot_read.setTitle("Read", color="#cfcfcf", size="9pt")
+        self.read_curve = self.plot_read.plot(pen=pg.mkPen(color="#ff5c5c", width=2))
+        style_plot(self.plot_read)
+        self.plot_read.setFixedHeight(70)
+        layout.addWidget(self.plot_read)
+
+        self.plot_write = pg.PlotWidget()
+        self.plot_write.setBackground((20, 20, 20))
+        self.plot_write.showGrid(x=True, y=True, alpha=0.2)
+        self.plot_write.setMouseEnabled(x=False, y=False)
+        self.plot_write.hideButtons()
+        self.plot_write.setMenuEnabled(False)
+        self.plot_write.setTitle("Write", color="#cfcfcf", size="9pt")
+        self.write_curve = self.plot_write.plot(pen=pg.mkPen(color="#4aa3ff", width=2))
+        style_plot(self.plot_write)
+        self.plot_write.setFixedHeight(70)
+        layout.addWidget(self.plot_write)
 
         usage_row = QtWidgets.QHBoxLayout()
         self.free_label = QtWidgets.QLabel("-- free")
@@ -525,6 +538,72 @@ class DiskPage:
             ("health", "Health"),
             ("power_cycles", "Power cycles"),
             ("power_on", "Power on hours"),
+        ]:
+            value_label = QtWidgets.QLabel("--")
+            value_label.setObjectName("detail-value")
+            details_layout.addRow(label, value_label)
+            self.detail_labels[key] = value_label
+        layout.addWidget(details)
+
+
+class NetPage:
+    """Custom network page with separate download/upload charts."""
+
+    def __init__(self) -> None:
+        self.widget = QtWidgets.QWidget()
+
+        layout = QtWidgets.QVBoxLayout(self.widget)
+        layout.setContentsMargins(14, 12, 14, 12)
+        layout.setSpacing(10)
+
+        self.title = QtWidgets.QLabel("Network")
+        self.title.setObjectName("page-title")
+        layout.addWidget(self.title)
+
+        self.main_label = QtWidgets.QLabel("Down / Up")
+        self.main_label.setObjectName("main-label")
+        self.main_value = QtWidgets.QLabel("--")
+        self.main_value.setObjectName("main-value")
+
+        main_box = QtWidgets.QVBoxLayout()
+        main_box.addWidget(self.main_label)
+        main_box.addWidget(self.main_value)
+        layout.addLayout(main_box)
+
+        self.plot_down = pg.PlotWidget()
+        self.plot_down.setBackground((20, 20, 20))
+        self.plot_down.setYRange(0, 100)
+        self.plot_down.showGrid(x=True, y=True, alpha=0.2)
+        self.plot_down.setMouseEnabled(x=False, y=False)
+        self.plot_down.hideButtons()
+        self.plot_down.setMenuEnabled(False)
+        self.plot_down.setTitle("Download", color="#cfcfcf", size="9pt")
+        self.curve_down = self.plot_down.plot(pen=pg.mkPen(color="#59a6ff", width=2))
+        style_plot(self.plot_down)
+        self.plot_down.setFixedHeight(70)
+        layout.addWidget(self.plot_down)
+
+        self.plot_up = pg.PlotWidget()
+        self.plot_up.setBackground((20, 20, 20))
+        self.plot_up.setYRange(0, 100)
+        self.plot_up.showGrid(x=True, y=True, alpha=0.2)
+        self.plot_up.setMouseEnabled(x=False, y=False)
+        self.plot_up.hideButtons()
+        self.plot_up.setMenuEnabled(False)
+        self.plot_up.setTitle("Upload", color="#cfcfcf", size="9pt")
+        self.curve_up = self.plot_up.plot(pen=pg.mkPen(color="#ff5c5c", width=2))
+        style_plot(self.plot_up)
+        self.plot_up.setFixedHeight(70)
+        layout.addWidget(self.plot_up)
+
+        details = QtWidgets.QGroupBox("Details")
+        details_layout = QtWidgets.QFormLayout(details)
+        self.detail_labels = {}
+        for key, label in [
+            ("down", "Download"),
+            ("up", "Upload"),
+            ("total_down", "Total Down"),
+            ("total_up", "Total Up"),
         ]:
             value_label = QtWidgets.QLabel("--")
             value_label.setObjectName("detail-value")
@@ -655,6 +734,7 @@ class GpuPage:
         self.plot.setTitle("GPU Usage", color="#cfcfcf", size="9pt")
         self.curve = self.plot.plot(pen=pg.mkPen(color="#7d7bff", width=2))
         style_plot(self.plot)
+        self.plot.setFixedHeight(70)
         layout.addWidget(self.plot)
 
 class DetailWindow(QtWidgets.QWidget):
@@ -674,6 +754,8 @@ class DetailWindow(QtWidgets.QWidget):
             "disk_read": [0.0] * 120,
             "disk_write": [0.0] * 120,
             "net": [0.0] * 120,
+            "net_down": [0.0] * 120,
+            "net_up": [0.0] * 120,
         }
 
         self.setWindowTitle("System Details")
@@ -716,7 +798,11 @@ class DetailWindow(QtWidgets.QWidget):
         panel_layout.addLayout(header)
 
         self.stack = QtWidgets.QStackedWidget()
-        panel_layout.addWidget(self.stack, 1)
+        self.stack.setSizePolicy(
+            QtWidgets.QSizePolicy.Policy.Preferred,
+            QtWidgets.QSizePolicy.Policy.Fixed,
+        )
+        panel_layout.addWidget(self.stack)
 
         self.pages = {
             "cpu": MetricPage(
@@ -746,22 +832,12 @@ class DetailWindow(QtWidgets.QWidget):
                 ],
             ),
             "disk": DiskPage(),
-            "net": MetricPage(
-                "Network",
-                "Down / Up",
-                "Network Throughput",
-                "#6cff6c",
-                [
-                    ("down", "Download"),
-                    ("up", "Upload"),
-                    ("total_down", "Total Down"),
-                    ("total_up", "Total Up"),
-                ],
-            ),
+            "net": NetPage(),
         }
 
         for page in self.pages.values():
             self.stack.addWidget(page.widget)
+        self.stack.currentChanged.connect(self._on_stack_changed)
 
     def _apply_style(self) -> None:
         flags = (
@@ -832,9 +908,45 @@ class DetailWindow(QtWidgets.QWidget):
 
         screen = QtWidgets.QApplication.primaryScreen()
         geo = screen.availableGeometry() if screen else QtCore.QRect(0, 0, 1280, 720)
-        width = 320
-        height = 520
-        self.setGeometry(geo.x() + geo.width() - width - 12, geo.y() + 28, width, height)
+        self._fixed_width = 320
+        self.setFixedWidth(self._fixed_width)
+        self.adjustSize()
+        height = self.sizeHint().height()
+        self.resize(self._fixed_width, height)
+        self.move(geo.x() + geo.width() - self._fixed_width - 12, geo.y() + 28)
+
+    def _resize_to_page(self, page_widget: QtWidgets.QWidget) -> None:
+        page_widget.adjustSize()
+        if page_widget.layout() is not None:
+            page_widget.layout().invalidate()
+            page_widget.layout().activate()
+            page_height = page_widget.layout().sizeHint().height()
+        else:
+            page_height = page_widget.sizeHint().height()
+        if page_height > 0:
+            self.stack.setFixedHeight(page_height)
+        if self.layout() is not None:
+            self.layout().invalidate()
+            self.layout().activate()
+        self.adjustSize()
+        height = self.sizeHint().height()
+        self.resize(self._fixed_width, height)
+
+    def _schedule_resize(self, page_widget: QtWidgets.QWidget) -> None:
+        self._resize_to_page(page_widget)
+        QtCore.QTimer.singleShot(0, lambda: self._resize_to_page(page_widget))
+        QtCore.QTimer.singleShot(50, lambda: self._resize_to_page(page_widget))
+
+    def _on_stack_changed(self, _index: int) -> None:
+        page = self.stack.currentWidget()
+        if page is not None:
+            self._schedule_resize(page)
+
+    def showEvent(self, event: QtGui.QShowEvent) -> None:
+        super().showEvent(event)
+        page = self.stack.currentWidget()
+        if page is not None:
+            self._schedule_resize(page)
 
     def show_page(self, key: str, anchor: Dict | None = None) -> None:
         page = self.pages.get(key)
@@ -854,6 +966,7 @@ class DetailWindow(QtWidgets.QWidget):
             f"background: {color}; color: #0b0b0b; border-radius: 11px; font-weight: 700;"
         )
         self.stack.setCurrentWidget(page.widget)
+        self._schedule_resize(page.widget)
         if anchor:
             self.position_below_anchor(anchor)
         self.show()
@@ -951,9 +1064,16 @@ class DetailWindow(QtWidgets.QWidget):
             net_page.main_value.setText(
                 f"{format_rate_short(sample.net_down_bps)}/{format_rate_short(sample.net_up_bps)}"
             )
-            net_total = (sample.net_up_bps + sample.net_down_bps) / 1024
-            self.history["net"] = (self.history["net"] + [net_total])[-len(self.history["net"]) :]
-            net_page.curve.setData(self.history["net"])
+            net_down = sample.net_down_bps / 1024
+            net_up = sample.net_up_bps / 1024
+            self.history["net"] = (self.history["net"] + [net_down + net_up])[-len(self.history["net"]) :]
+            self.history["net_down"] = (self.history["net_down"] + [net_down])[-len(self.history["net_down"]) :]
+            self.history["net_up"] = (self.history["net_up"] + [net_up])[-len(self.history["net_up"]) :]
+            if hasattr(net_page, "curve_down") and hasattr(net_page, "curve_up"):
+                net_page.curve_down.setData(self.history["net_down"])
+                net_page.curve_up.setData(self.history["net_up"])
+            else:
+                net_page.curve.setData(self.history["net"])
             net_page.detail_labels["down"].setText(format_rate(sample.net_down_bps))
             net_page.detail_labels["up"].setText(format_rate(sample.net_up_bps))
             net_io = psutil.net_io_counters()
