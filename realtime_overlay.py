@@ -301,6 +301,8 @@ class MetricStatusItem:
     def __init__(self, label: str, handler: MenuActionHandler, action: str, value_color: str | None = None) -> None:
         self.label = label
         self.value_color = value_color
+        self._last_value: str | None = None
+        self._last_net: tuple[str, str] | None = None
         self.item = NSStatusBar.systemStatusBar().statusItemWithLength_(
             NSVariableStatusItemLength
         )
@@ -319,16 +321,23 @@ class MetricStatusItem:
     def update_value(self, value: str) -> None:
         if self.button is None:
             return
+        if value == self._last_value:
+            return
         image = make_metric_image(self.label, value, self.value_color)
         self.button.setImage_(image)
         self.button.setToolTip_(f"{self.label}: {value}")
+        self._last_value = value
 
     def update_net(self, up_value: str, down_value: str) -> None:
         if self.button is None:
             return
+        pair = (up_value, down_value)
+        if pair == self._last_net:
+            return
         image = make_net_image(up_value, down_value)
         self.button.setImage_(image)
         self.button.setToolTip_(f"{self.label}: ↑ {up_value}  ↓ {down_value}")
+        self._last_net = pair
 
     def get_screen_rect(self):
         if self.button is None:
@@ -1195,173 +1204,172 @@ class DetailWindow(QtWidgets.QWidget):
             net_page.plot_up.repaint()
 
     def update_from_sample(self, sample: SystemSample) -> None:
+        current = self.stack.currentWidget()
         try:
             cpu_page = self.pages["cpu"]
-            cpu_page.main_value.setText(f"{sample.cpu_percent:.0f}%")
-            self.history["cpu"] = (self.history["cpu"] + [sample.cpu_percent])[-len(self.history["cpu"]) :]
-            cpu_page.curve.setData(self.history["cpu"])
+            if current == cpu_page.widget:
+                cpu_page.main_value.setText(f"{sample.cpu_percent:.0f}%")
+                self.history["cpu"] = (self.history["cpu"] + [sample.cpu_percent])[-len(self.history["cpu"]) :]
+                cpu_page.curve.setData(self.history["cpu"])
 
-            try:
-                load_1, load_5, load_15 = os.getloadavg()
-            except Exception:
-                load_1, load_5, load_15 = 0.0, 0.0, 0.0
-            cpu_page.detail_labels["load_1"].setText(f"{load_1:.2f}")
-            cpu_page.detail_labels["load_5"].setText(f"{load_5:.2f}")
-            cpu_page.detail_labels["load_15"].setText(f"{load_15:.2f}")
-            cpu_page.detail_labels["cores"].setText(str(psutil.cpu_count(logical=True)))
-            uptime_seconds = int(time.time() - psutil.boot_time())
-            cpu_page.detail_labels["uptime"].setText(format_uptime(uptime_seconds))
-            if hasattr(cpu_page, "top_labels"):
-                now = time.time()
-                interval_s = max(0.5, float(self.config.data.get("update_ms", 1000)) / 1000.0)
-                if (
-                    now - self._list_last["cpu"] >= interval_s
-                    and self.stack.currentWidget() == cpu_page.widget
-                ):
-                    self._list_last["cpu"] = now
-                    top = get_top_cpu_processes(10)
-                    for idx, pair in enumerate(cpu_page.top_labels):
-                        row, icon_label, name_label, value_label = pair
-                        if idx < len(top):
-                            name, cpu, pid = top[idx]
-                            name_label.setText(name)
-                            value_label.setText(f"{cpu:.1f}%")
-                            icon = get_app_icon_for_pid(pid, name)
-                            if icon is not None:
-                                icon_label.setPixmap(icon)
+                try:
+                    load_1, load_5, load_15 = os.getloadavg()
+                except Exception:
+                    load_1, load_5, load_15 = 0.0, 0.0, 0.0
+                cpu_page.detail_labels["load_1"].setText(f"{load_1:.2f}")
+                cpu_page.detail_labels["load_5"].setText(f"{load_5:.2f}")
+                cpu_page.detail_labels["load_15"].setText(f"{load_15:.2f}")
+                cpu_page.detail_labels["cores"].setText(str(psutil.cpu_count(logical=True)))
+                uptime_seconds = int(time.time() - psutil.boot_time())
+                cpu_page.detail_labels["uptime"].setText(format_uptime(uptime_seconds))
+                if hasattr(cpu_page, "top_labels"):
+                    now = time.time()
+                    interval_s = max(0.5, float(self.config.data.get("update_ms", 1000)) / 1000.0)
+                    if now - self._list_last["cpu"] >= interval_s:
+                        self._list_last["cpu"] = now
+                        top = get_top_cpu_processes(10)
+                        for idx, pair in enumerate(cpu_page.top_labels):
+                            row, icon_label, name_label, value_label = pair
+                            if idx < len(top):
+                                name, cpu, pid = top[idx]
+                                name_label.setText(name)
+                                value_label.setText(f"{cpu:.1f}%")
+                                icon = get_app_icon_for_pid(pid, name)
+                                if icon is not None:
+                                    icon_label.setPixmap(icon)
+                                else:
+                                    icon_label.clear()
+                                row.setVisible(True)
                             else:
-                                icon_label.clear()
-                            row.setVisible(True)
-                        else:
-                            row.setVisible(False)
+                                row.setVisible(False)
         except Exception as exc:
             log_error("cpu_update", exc)
 
         try:
             ram_page = self.pages["ram"]
-            ram_page.main_value.setText(f"{sample.ram_percent:.0f}%")
-            self.history["ram"] = (self.history["ram"] + [sample.ram_percent])[-len(self.history["ram"]) :]
-            ram_page.curve.setData(self.history["ram"])
-            ram_page.detail_labels["used"].setText(format_bytes(sample.ram_used))
-            ram_page.detail_labels["available"].setText(format_bytes(sample.ram_available))
-            ram_page.detail_labels["total"].setText(format_bytes(sample.ram_total))
-            swap = psutil.swap_memory()
-            ram_page.detail_labels["swap"].setText(format_bytes(swap.used))
-            if hasattr(ram_page, "top_labels"):
-                now = time.time()
-                interval_s = max(0.5, float(self.config.data.get("update_ms", 1000)) / 1000.0)
-                if (
-                    now - self._list_last["ram"] >= interval_s
-                    and self.stack.currentWidget() == ram_page.widget
-                ):
-                    self._list_last["ram"] = now
-                    top = get_top_ram_processes(10)
-                    for idx, pair in enumerate(ram_page.top_labels):
-                        row, icon_label, name_label, value_label = pair
-                        if idx < len(top):
-                            name, rss, pid = top[idx]
-                            name_label.setText(name)
-                            value_label.setText(format_bytes(rss))
-                            icon = get_app_icon_for_pid(pid, name)
-                            if icon is not None:
-                                icon_label.setPixmap(icon)
+            if current == ram_page.widget:
+                ram_page.main_value.setText(f"{sample.ram_percent:.0f}%")
+                self.history["ram"] = (self.history["ram"] + [sample.ram_percent])[-len(self.history["ram"]) :]
+                ram_page.curve.setData(self.history["ram"])
+                ram_page.detail_labels["used"].setText(format_bytes(sample.ram_used))
+                ram_page.detail_labels["available"].setText(format_bytes(sample.ram_available))
+                ram_page.detail_labels["total"].setText(format_bytes(sample.ram_total))
+                swap = psutil.swap_memory()
+                ram_page.detail_labels["swap"].setText(format_bytes(swap.used))
+                if hasattr(ram_page, "top_labels"):
+                    now = time.time()
+                    interval_s = max(0.5, float(self.config.data.get("update_ms", 1000)) / 1000.0)
+                    if now - self._list_last["ram"] >= interval_s:
+                        self._list_last["ram"] = now
+                        top = get_top_ram_processes(10)
+                        for idx, pair in enumerate(ram_page.top_labels):
+                            row, icon_label, name_label, value_label = pair
+                            if idx < len(top):
+                                name, rss, pid = top[idx]
+                                name_label.setText(name)
+                                value_label.setText(format_bytes(rss))
+                                icon = get_app_icon_for_pid(pid, name)
+                                if icon is not None:
+                                    icon_label.setPixmap(icon)
+                                else:
+                                    icon_label.clear()
+                                row.setVisible(True)
                             else:
-                                icon_label.clear()
-                            row.setVisible(True)
-                        else:
-                            row.setVisible(False)
+                                row.setVisible(False)
         except Exception as exc:
             log_error("ram_update", exc)
 
         disk_page = self.pages["disk"]
-        try:
-            total_b, free_b, percent = get_disk_usage_info()
-            # macOS storage UI uses decimal GB (1e9 bytes)
-            free_gb = free_b / 1_000_000_000
-            total_gb = total_b / 1_000_000_000
-            disk_page.disk_percent.setText(f"{percent:.0f}%")
-            disk_page.free_label.setText(f"{free_gb:.1f} GB of {total_gb:.1f} GB free")
-            disk_page.usage_bar.setValue(int(percent))
+        if current == disk_page.widget:
+            try:
+                total_b, free_b, percent = get_disk_usage_info()
+                # macOS storage UI uses decimal GB (1e9 bytes)
+                free_gb = free_b / 1_000_000_000
+                total_gb = total_b / 1_000_000_000
+                disk_page.disk_percent.setText(f"{percent:.0f}%")
+                disk_page.free_label.setText(f"{free_gb:.1f} GB of {total_gb:.1f} GB free")
+                disk_page.usage_bar.setValue(int(percent))
 
-            read_mb = sample.disk_read_bps / 1024 / 1024
-            write_mb = sample.disk_write_bps / 1024 / 1024
-            disk_page.read_label.setText(f"{read_mb:.1f} MB/s")
-            disk_page.write_label.setText(f"{write_mb:.1f} MB/s")
+                read_mb = sample.disk_read_bps / 1024 / 1024
+                write_mb = sample.disk_write_bps / 1024 / 1024
+                disk_page.read_label.setText(f"{read_mb:.1f} MB/s")
+                disk_page.write_label.setText(f"{write_mb:.1f} MB/s")
 
-            self.history["disk_read"] = (self.history["disk_read"] + [read_mb])[-len(self.history["disk_read"]) :]
-            self.history["disk_write"] = (self.history["disk_write"] + [write_mb])[-len(self.history["disk_write"]) :]
-            disk_page.read_curve.setData(self.history["disk_read"])
-            disk_page.write_curve.setData(self.history["disk_write"])
+                self.history["disk_read"] = (self.history["disk_read"] + [read_mb])[-len(self.history["disk_read"]) :]
+                self.history["disk_write"] = (self.history["disk_write"] + [write_mb])[-len(self.history["disk_write"]) :]
+                disk_page.read_curve.setData(self.history["disk_read"])
+                disk_page.write_curve.setData(self.history["disk_write"])
 
-            disk_page.detail_labels["read"].setText(format_rate(sample.disk_read_bps))
-            disk_page.detail_labels["write"].setText(format_rate(sample.disk_write_bps))
-            disk_io = psutil.disk_io_counters()
-            disk_page.detail_labels["total_read"].setText(format_bytes(disk_io.read_bytes))
-            disk_page.detail_labels["total_write"].setText(format_bytes(disk_io.write_bytes))
+                disk_page.detail_labels["read"].setText(format_rate(sample.disk_read_bps))
+                disk_page.detail_labels["write"].setText(format_rate(sample.disk_write_bps))
+                disk_io = psutil.disk_io_counters()
+                disk_page.detail_labels["total_read"].setText(format_bytes(disk_io.read_bytes))
+                disk_page.detail_labels["total_write"].setText(format_bytes(disk_io.write_bytes))
 
-            meta = get_disk_meta()
-            disk_page.volume_name.setText(meta.get("volume_name") or "Macintosh HD")
-            disk_page.detail_labels["smart_total_read"].setText(meta.get("smart_total_read", "N/A"))
-            disk_page.detail_labels["smart_total_write"].setText(meta.get("smart_total_write", "N/A"))
-            disk_page.detail_labels["temp"].setText(meta.get("temperature", "N/A"))
-            disk_page.detail_labels["health"].setText(meta.get("health", "N/A"))
-            disk_page.detail_labels["power_cycles"].setText(meta.get("power_cycles", "N/A"))
-            disk_page.detail_labels["power_on"].setText(meta.get("power_on_hours", "N/A"))
-            if meta.get("smart_error"):
-                log_error("smartctl", Exception(meta["smart_error"]))
-        except Exception:
-            disk_page.disk_percent.setText("N/A")
-            disk_page.free_label.setText("N/A")
-            disk_page.read_label.setText("N/A")
-            disk_page.write_label.setText("N/A")
-            disk_page.detail_labels["read"].setText("N/A")
-            disk_page.detail_labels["write"].setText("N/A")
-            disk_page.detail_labels["total_read"].setText("N/A")
-            disk_page.detail_labels["total_write"].setText("N/A")
-            disk_page.detail_labels["smart_total_read"].setText("N/A")
-            disk_page.detail_labels["smart_total_write"].setText("N/A")
-            disk_page.detail_labels["temp"].setText("N/A")
-            disk_page.detail_labels["health"].setText("N/A")
-            disk_page.detail_labels["power_cycles"].setText("N/A")
-            disk_page.detail_labels["power_on"].setText("N/A")
+                meta = get_disk_meta()
+                disk_page.volume_name.setText(meta.get("volume_name") or "Macintosh HD")
+                disk_page.detail_labels["smart_total_read"].setText(meta.get("smart_total_read", "N/A"))
+                disk_page.detail_labels["smart_total_write"].setText(meta.get("smart_total_write", "N/A"))
+                disk_page.detail_labels["temp"].setText(meta.get("temperature", "N/A"))
+                disk_page.detail_labels["health"].setText(meta.get("health", "N/A"))
+                disk_page.detail_labels["power_cycles"].setText(meta.get("power_cycles", "N/A"))
+                disk_page.detail_labels["power_on"].setText(meta.get("power_on_hours", "N/A"))
+                if meta.get("smart_error"):
+                    log_error("smartctl", Exception(meta["smart_error"]))
+            except Exception:
+                disk_page.disk_percent.setText("N/A")
+                disk_page.free_label.setText("N/A")
+                disk_page.read_label.setText("N/A")
+                disk_page.write_label.setText("N/A")
+                disk_page.detail_labels["read"].setText("N/A")
+                disk_page.detail_labels["write"].setText("N/A")
+                disk_page.detail_labels["total_read"].setText("N/A")
+                disk_page.detail_labels["total_write"].setText("N/A")
+                disk_page.detail_labels["smart_total_read"].setText("N/A")
+                disk_page.detail_labels["smart_total_write"].setText("N/A")
+                disk_page.detail_labels["temp"].setText("N/A")
+                disk_page.detail_labels["health"].setText("N/A")
+                disk_page.detail_labels["power_cycles"].setText("N/A")
+                disk_page.detail_labels["power_on"].setText("N/A")
 
         net_page = self.pages["net"]
-        try:
-            net_page.main_value.setText(
-                f"{format_rate_short(sample.net_down_bps)}/{format_rate_short(sample.net_up_bps)}"
-            )
-            net_down = max(0.0, sample.net_down_bps / 1024)
-            net_up = max(0.0, sample.net_up_bps / 1024)
-            self.history["net"] = (self.history["net"] + [net_down + net_up])[-len(self.history["net"]) :]
-            self.history["net_down"] = (self.history["net_down"] + [net_down])[-len(self.history["net_down"]) :]
-            self.history["net_up"] = (self.history["net_up"] + [net_up])[-len(self.history["net_up"]) :]
-            if hasattr(net_page, "curve_down") and hasattr(net_page, "curve_up"):
-                if hasattr(net_page, "plot_down"):
-                    down_max = max(1.0, max(self.history["net_down"]) * 1.2)
-                    net_page.plot_down.setYRange(0, down_max)
-                if hasattr(net_page, "plot_up"):
-                    up_max = max(1.0, max(self.history["net_up"]) * 1.2)
-                    net_page.plot_up.setYRange(0, up_max)
-                net_page.curve_down.setData(self.history["net_down"])
-                net_page.curve_up.setData(self.history["net_up"])
-            else:
-                net_page.curve.setData(self.history["net"])
-            net_page.detail_labels["down"].setText(format_rate(sample.net_down_bps))
-            net_page.detail_labels["up"].setText(format_rate(sample.net_up_bps))
-            net_io = psutil.net_io_counters()
-            net_page.detail_labels["total_down"].setText(format_bytes(net_io.bytes_recv))
-            net_page.detail_labels["total_up"].setText(format_bytes(net_io.bytes_sent))
-        except Exception as exc:
-            log_error("net_update", exc)
-            net_page.main_value.setText("N/A")
-            net_page.detail_labels["down"].setText("N/A")
-            net_page.detail_labels["up"].setText("N/A")
-            net_page.detail_labels["total_down"].setText("N/A")
-            net_page.detail_labels["total_up"].setText("N/A")
+        if current == net_page.widget:
+            try:
+                net_page.main_value.setText(
+                    f"{format_rate_short(sample.net_down_bps)}/{format_rate_short(sample.net_up_bps)}"
+                )
+                net_down = max(0.0, sample.net_down_bps / 1024)
+                net_up = max(0.0, sample.net_up_bps / 1024)
+                self.history["net"] = (self.history["net"] + [net_down + net_up])[-len(self.history["net"]) :]
+                self.history["net_down"] = (self.history["net_down"] + [net_down])[-len(self.history["net_down"]) :]
+                self.history["net_up"] = (self.history["net_up"] + [net_up])[-len(self.history["net_up"]) :]
+                if hasattr(net_page, "curve_down") and hasattr(net_page, "curve_up"):
+                    if hasattr(net_page, "plot_down"):
+                        down_max = max(1.0, max(self.history["net_down"]) * 1.2)
+                        net_page.plot_down.setYRange(0, down_max)
+                    if hasattr(net_page, "plot_up"):
+                        up_max = max(1.0, max(self.history["net_up"]) * 1.2)
+                        net_page.plot_up.setYRange(0, up_max)
+                    net_page.curve_down.setData(self.history["net_down"])
+                    net_page.curve_up.setData(self.history["net_up"])
+                else:
+                    net_page.curve.setData(self.history["net"])
+                net_page.detail_labels["down"].setText(format_rate(sample.net_down_bps))
+                net_page.detail_labels["up"].setText(format_rate(sample.net_up_bps))
+                net_io = psutil.net_io_counters()
+                net_page.detail_labels["total_down"].setText(format_bytes(net_io.bytes_recv))
+                net_page.detail_labels["total_up"].setText(format_bytes(net_io.bytes_sent))
+            except Exception as exc:
+                log_error("net_update", exc)
+                net_page.main_value.setText("N/A")
+                net_page.detail_labels["down"].setText("N/A")
+                net_page.detail_labels["up"].setText("N/A")
+                net_page.detail_labels["total_down"].setText("N/A")
+                net_page.detail_labels["total_up"].setText("N/A")
 
         try:
             gpu_page = self.pages["gpu"]
-            if isinstance(gpu_page, GpuPage):
+            if isinstance(gpu_page, GpuPage) and current == gpu_page.widget:
                 info = get_gpu_static_info()
                 gpu_page.model_label.setText(info.get("model") or "Apple GPU")
                 gpu_page.detail_labels["model"].setText(info.get("model") or "--")
@@ -1405,7 +1413,7 @@ class DetailWindow(QtWidgets.QWidget):
                     else:
                         gpu_page.detail_labels["tiler"].setText("N/A")
                         gpu_page.tiler_gauge.gauge.set_value(None, None)
-            else:
+            elif current == gpu_page.widget:
                 if sample.gpu_device_percent is None:
                     gpu_page.main_value.setText("N/A")
                     gpu_page.detail_labels["status"].setText("No GPU data")
@@ -2176,10 +2184,11 @@ class AppController(QtCore.QObject):
     def _on_sample(self, sample: SystemSample) -> None:
         self.last_sample = sample
         self.menu_bar.update_from_sample(sample)
-        self.detail_window.update_from_sample(sample)
-        if self.dashboard is not None:
+        if self.detail_window.isVisible():
+            self.detail_window.update_from_sample(sample)
+        if self.dashboard is not None and self.dashboard.isVisible():
             self.dashboard.update_from_sample(sample)
-        if self.settings is not None:
+        if self.settings is not None and self.settings.isVisible():
             self.settings.update_from_sample(sample)
 
     def _on_detail_show(self) -> None:
@@ -2650,18 +2659,35 @@ def get_app_bundle_path() -> Path | None:
 
 
 def set_start_at_login(enabled: bool) -> tuple[bool, str]:
+    def _launchctl(args: list[str]) -> subprocess.CompletedProcess | None:
+        try:
+            return subprocess.run(
+                ["/bin/launchctl", *args],
+                capture_output=True,
+                text=True,
+                timeout=4,
+            )
+        except Exception as exc:
+            log_error("launchctl", exc)
+            return None
+
+    def _bootstrap_agent() -> bool:
+        uid = os.getuid()
+        domain = f"gui/{uid}"
+        _launchctl(["bootout", domain, str(LAUNCH_AGENT_PATH)])
+        result = _launchctl(["bootstrap", domain, str(LAUNCH_AGENT_PATH)])
+        if result is None or result.returncode != 0:
+            return False
+        _launchctl(["enable", f"{domain}/{LAUNCH_AGENT_LABEL}"])
+        _launchctl(["kickstart", "-k", f"{domain}/{LAUNCH_AGENT_LABEL}"])
+        return True
+
     if not enabled:
         try:
             if LAUNCH_AGENT_PATH.exists():
-                try:
-                    subprocess.run(
-                        ["/bin/launchctl", "unload", "-w", str(LAUNCH_AGENT_PATH)],
-                        capture_output=True,
-                        text=True,
-                        timeout=4,
-                    )
-                except Exception:
-                    pass
+                uid = os.getuid()
+                _launchctl(["bootout", f"gui/{uid}", str(LAUNCH_AGENT_PATH)])
+                _launchctl(["unload", "-w", str(LAUNCH_AGENT_PATH)])
                 LAUNCH_AGENT_PATH.unlink(missing_ok=True)
             return True, "Disabled."
         except Exception as exc:
@@ -2681,15 +2707,8 @@ def set_start_at_login(enabled: bool) -> tuple[bool, str]:
         LAUNCH_AGENT_PATH.parent.mkdir(parents=True, exist_ok=True)
         with open(LAUNCH_AGENT_PATH, "wb") as handle:
             plistlib.dump(plist, handle)
-        try:
-            subprocess.run(
-                ["/bin/launchctl", "load", "-w", str(LAUNCH_AGENT_PATH)],
-                capture_output=True,
-                text=True,
-                timeout=4,
-            )
-        except Exception:
-            pass
+        if not _bootstrap_agent():
+            _launchctl(["load", "-w", str(LAUNCH_AGENT_PATH)])
         return True, "Enabled."
     except Exception as exc:
         return False, str(exc)
