@@ -447,15 +447,38 @@ class MetricPage:
         self.plot.setFixedHeight(70)
         layout.addWidget(self.plot)
 
-        details = QtWidgets.QGroupBox("Details")
-        details_layout = QtWidgets.QFormLayout(details)
+        self.details_group = QtWidgets.QGroupBox("Details")
+        self.details_layout = QtWidgets.QFormLayout(self.details_group)
+        self.details_layout.setLabelAlignment(
+            QtCore.Qt.AlignmentFlag.AlignLeft | QtCore.Qt.AlignmentFlag.AlignVCenter
+        )
+        self.details_layout.setFormAlignment(
+            QtCore.Qt.AlignmentFlag.AlignLeft | QtCore.Qt.AlignmentFlag.AlignTop
+        )
+        self.details_layout.setFieldGrowthPolicy(
+            QtWidgets.QFormLayout.FieldGrowthPolicy.ExpandingFieldsGrow
+        )
         self.detail_labels = {}
         for key, label in detail_fields:
+            label_widget = QtWidgets.QLabel(label)
+            label_widget.setObjectName("detail-label")
+            label_widget.setStyleSheet("font-size: 10px;")
+            label_widget.setAlignment(
+                QtCore.Qt.AlignmentFlag.AlignLeft | QtCore.Qt.AlignmentFlag.AlignVCenter
+            )
             value_label = QtWidgets.QLabel("--")
             value_label.setObjectName("detail-value")
-            details_layout.addRow(label, value_label)
+            value_label.setStyleSheet("font-size: 10px;")
+            value_label.setAlignment(
+                QtCore.Qt.AlignmentFlag.AlignRight | QtCore.Qt.AlignmentFlag.AlignVCenter
+            )
+            value_label.setSizePolicy(
+                QtWidgets.QSizePolicy.Policy.Expanding,
+                QtWidgets.QSizePolicy.Policy.Fixed,
+            )
+            self.details_layout.addRow(label_widget, value_label)
             self.detail_labels[key] = value_label
-        layout.addWidget(details)
+        layout.addWidget(self.details_group)
 
 
 class DiskPage:
@@ -526,6 +549,15 @@ class DiskPage:
 
         details = QtWidgets.QGroupBox("Details")
         details_layout = QtWidgets.QFormLayout(details)
+        details_layout.setLabelAlignment(
+            QtCore.Qt.AlignmentFlag.AlignLeft | QtCore.Qt.AlignmentFlag.AlignVCenter
+        )
+        details_layout.setFormAlignment(
+            QtCore.Qt.AlignmentFlag.AlignLeft | QtCore.Qt.AlignmentFlag.AlignTop
+        )
+        details_layout.setFieldGrowthPolicy(
+            QtWidgets.QFormLayout.FieldGrowthPolicy.ExpandingFieldsGrow
+        )
         self.detail_labels = {}
         for key, label in [
             ("read", "Read"),
@@ -539,9 +571,23 @@ class DiskPage:
             ("power_cycles", "Power cycles"),
             ("power_on", "Power on hours"),
         ]:
+            label_widget = QtWidgets.QLabel(label)
+            label_widget.setObjectName("detail-label")
+            label_widget.setStyleSheet("font-size: 10px;")
+            label_widget.setAlignment(
+                QtCore.Qt.AlignmentFlag.AlignLeft | QtCore.Qt.AlignmentFlag.AlignVCenter
+            )
             value_label = QtWidgets.QLabel("--")
             value_label.setObjectName("detail-value")
-            details_layout.addRow(label, value_label)
+            value_label.setStyleSheet("font-size: 10px;")
+            value_label.setAlignment(
+                QtCore.Qt.AlignmentFlag.AlignRight | QtCore.Qt.AlignmentFlag.AlignVCenter
+            )
+            value_label.setSizePolicy(
+                QtWidgets.QSizePolicy.Policy.Expanding,
+                QtWidgets.QSizePolicy.Policy.Fixed,
+            )
+            details_layout.addRow(label_widget, value_label)
             self.detail_labels[key] = value_label
         layout.addWidget(details)
 
@@ -598,6 +644,15 @@ class NetPage:
 
         details = QtWidgets.QGroupBox("Details")
         details_layout = QtWidgets.QFormLayout(details)
+        details_layout.setLabelAlignment(
+            QtCore.Qt.AlignmentFlag.AlignLeft | QtCore.Qt.AlignmentFlag.AlignVCenter
+        )
+        details_layout.setFormAlignment(
+            QtCore.Qt.AlignmentFlag.AlignLeft | QtCore.Qt.AlignmentFlag.AlignTop
+        )
+        details_layout.setFieldGrowthPolicy(
+            QtWidgets.QFormLayout.FieldGrowthPolicy.ExpandingFieldsGrow
+        )
         self.detail_labels = {}
         for key, label in [
             ("down", "Download"),
@@ -605,9 +660,23 @@ class NetPage:
             ("total_down", "Total Down"),
             ("total_up", "Total Up"),
         ]:
+            label_widget = QtWidgets.QLabel(label)
+            label_widget.setObjectName("detail-label")
+            label_widget.setStyleSheet("font-size: 10px;")
+            label_widget.setAlignment(
+                QtCore.Qt.AlignmentFlag.AlignLeft | QtCore.Qt.AlignmentFlag.AlignVCenter
+            )
             value_label = QtWidgets.QLabel("--")
             value_label.setObjectName("detail-value")
-            details_layout.addRow(label, value_label)
+            value_label.setStyleSheet("font-size: 10px;")
+            value_label.setAlignment(
+                QtCore.Qt.AlignmentFlag.AlignRight | QtCore.Qt.AlignmentFlag.AlignVCenter
+            )
+            value_label.setSizePolicy(
+                QtWidgets.QSizePolicy.Policy.Expanding,
+                QtWidgets.QSizePolicy.Policy.Fixed,
+            )
+            details_layout.addRow(label_widget, value_label)
             self.detail_labels[key] = value_label
         layout.addWidget(details)
 
@@ -698,6 +767,15 @@ class GpuPage:
         details = QtWidgets.QGroupBox()
         details.setObjectName("gpu-details-box")
         details_layout = QtWidgets.QFormLayout(details)
+        details_layout.setLabelAlignment(
+            QtCore.Qt.AlignmentFlag.AlignLeft | QtCore.Qt.AlignmentFlag.AlignVCenter
+        )
+        details_layout.setFormAlignment(
+            QtCore.Qt.AlignmentFlag.AlignLeft | QtCore.Qt.AlignmentFlag.AlignTop
+        )
+        details_layout.setFieldGrowthPolicy(
+            QtWidgets.QFormLayout.FieldGrowthPolicy.ExpandingFieldsGrow
+        )
         details_layout.setRowWrapPolicy(QtWidgets.QFormLayout.RowWrapPolicy.DontWrapRows)
         details_layout.setFormAlignment(QtCore.Qt.AlignmentFlag.AlignLeft)
         self.detail_labels = {}
@@ -709,9 +787,23 @@ class GpuPage:
             ("render", "Render utilization"),
             ("tiler", "Tiler utilization"),
         ]:
+            label_widget = QtWidgets.QLabel(label)
+            label_widget.setObjectName("detail-label")
+            label_widget.setStyleSheet("font-size: 10px;")
+            label_widget.setAlignment(
+                QtCore.Qt.AlignmentFlag.AlignLeft | QtCore.Qt.AlignmentFlag.AlignVCenter
+            )
             value_label = QtWidgets.QLabel("--")
             value_label.setObjectName("detail-value")
-            details_layout.addRow(label, value_label)
+            value_label.setStyleSheet("font-size: 10px;")
+            value_label.setAlignment(
+                QtCore.Qt.AlignmentFlag.AlignRight | QtCore.Qt.AlignmentFlag.AlignVCenter
+            )
+            value_label.setSizePolicy(
+                QtWidgets.QSizePolicy.Policy.Expanding,
+                QtWidgets.QSizePolicy.Policy.Fixed,
+            )
+            details_layout.addRow(label_widget, value_label)
             self.detail_labels[key] = value_label
         layout.addWidget(details)
 
@@ -757,6 +849,7 @@ class DetailWindow(QtWidgets.QWidget):
             "net_down": [0.0] * 120,
             "net_up": [0.0] * 120,
         }
+        self._list_last = {"cpu": 0.0, "ram": 0.0}
 
         self.setWindowTitle("System Details")
         self._build_ui()
@@ -837,6 +930,101 @@ class DetailWindow(QtWidgets.QWidget):
 
         for page in self.pages.values():
             self.stack.addWidget(page.widget)
+
+        cpu_page = self.pages["cpu"]
+        cpu_top = QtWidgets.QGroupBox("Top CPU Apps")
+        cpu_top_layout = QtWidgets.QVBoxLayout(cpu_top)
+        cpu_top_layout.setContentsMargins(8, 6, 8, 6)
+        cpu_top_layout.setSpacing(4)
+        cpu_page.top_labels = []
+        for _ in range(10):
+            row = QtWidgets.QWidget()
+            row_layout = QtWidgets.QHBoxLayout(row)
+            row_layout.setContentsMargins(8, 2, 8, 2)
+            row_layout.setSpacing(6)
+
+            name_label = QtWidgets.QLabel("--")
+            name_label.setStyleSheet("font-size: 9px;")
+            name_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignLeft | QtCore.Qt.AlignmentFlag.AlignVCenter)
+            name_label.setSizePolicy(
+                QtWidgets.QSizePolicy.Policy.Expanding,
+                QtWidgets.QSizePolicy.Policy.Fixed,
+            )
+
+            value_label = QtWidgets.QLabel("--")
+            value_label.setStyleSheet("font-size: 9px; color: #4aa3ff;")
+            value_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignRight | QtCore.Qt.AlignmentFlag.AlignVCenter)
+            value_label.setSizePolicy(
+                QtWidgets.QSizePolicy.Policy.Fixed,
+                QtWidgets.QSizePolicy.Policy.Fixed,
+            )
+
+            row_layout.addWidget(name_label)
+            row_layout.addWidget(value_label)
+            cpu_top_layout.addWidget(row)
+            row.setVisible(False)
+            cpu_page.top_labels.append((row, name_label, value_label))
+        cpu_page.widget.layout().addWidget(cpu_top)
+
+        ram_page = self.pages["ram"]
+        ram_top = QtWidgets.QGroupBox("Top RAM Apps")
+        ram_top_layout = QtWidgets.QVBoxLayout(ram_top)
+        ram_top_layout.setContentsMargins(8, 6, 8, 6)
+        ram_top_layout.setSpacing(4)
+        ram_page.top_labels = []
+        for _ in range(10):
+            row = QtWidgets.QWidget()
+            row_layout = QtWidgets.QHBoxLayout(row)
+            row_layout.setContentsMargins(8, 2, 8, 2)
+            row_layout.setSpacing(6)
+
+            name_label = QtWidgets.QLabel("--")
+            name_label.setStyleSheet("font-size: 9px;")
+            name_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignLeft | QtCore.Qt.AlignmentFlag.AlignVCenter)
+            name_label.setSizePolicy(
+                QtWidgets.QSizePolicy.Policy.Expanding,
+                QtWidgets.QSizePolicy.Policy.Fixed,
+            )
+
+            value_label = QtWidgets.QLabel("--")
+            value_label.setStyleSheet("font-size: 9px; color: #66d1ff;")
+            value_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignRight | QtCore.Qt.AlignmentFlag.AlignVCenter)
+            value_label.setSizePolicy(
+                QtWidgets.QSizePolicy.Policy.Fixed,
+                QtWidgets.QSizePolicy.Policy.Fixed,
+            )
+
+            row_layout.addWidget(name_label)
+            row_layout.addWidget(value_label)
+            ram_top_layout.addWidget(row)
+            row.setVisible(False)
+            ram_page.top_labels.append((row, name_label, value_label))
+        ram_page.widget.layout().addWidget(ram_top)
+
+        if hasattr(ram_page, "details_layout"):
+            ram_page.details_layout.setContentsMargins(8, 6, 8, 6)
+            ram_page.details_layout.setVerticalSpacing(4)
+            ram_page.details_layout.setLabelAlignment(
+                QtCore.Qt.AlignmentFlag.AlignLeft | QtCore.Qt.AlignmentFlag.AlignVCenter
+            )
+            ram_page.details_layout.setFormAlignment(
+                QtCore.Qt.AlignmentFlag.AlignLeft | QtCore.Qt.AlignmentFlag.AlignTop
+            )
+            for value_label in ram_page.detail_labels.values():
+                label_widget = ram_page.details_layout.labelForField(value_label)
+                if label_widget is not None:
+                    label_widget.setStyleSheet("font-size: 10px;")
+                    label_widget.setAlignment(
+                        QtCore.Qt.AlignmentFlag.AlignLeft | QtCore.Qt.AlignmentFlag.AlignVCenter
+                    )
+                value_label.setStyleSheet("font-size: 10px; color: #66d1ff;")
+                value_label.setAlignment(
+                    QtCore.Qt.AlignmentFlag.AlignRight | QtCore.Qt.AlignmentFlag.AlignVCenter
+                )
+                value_label.setSizePolicy(
+                    QtWidgets.QSizePolicy.Policy.Expanding,
+                    QtWidgets.QSizePolicy.Policy.Fixed,
+                )
         self.stack.currentChanged.connect(self._on_stack_changed)
 
     def _apply_style(self) -> None:
@@ -991,6 +1179,24 @@ class DetailWindow(QtWidgets.QWidget):
             cpu_page.detail_labels["cores"].setText(str(psutil.cpu_count(logical=True)))
             uptime_seconds = int(time.time() - psutil.boot_time())
             cpu_page.detail_labels["uptime"].setText(format_uptime(uptime_seconds))
+            if hasattr(cpu_page, "top_labels"):
+                now = time.time()
+                interval_s = max(0.5, float(self.config.data.get("update_ms", 1000)) / 1000.0)
+                if (
+                    now - self._list_last["cpu"] >= interval_s
+                    and self.stack.currentWidget() == cpu_page.widget
+                ):
+                    self._list_last["cpu"] = now
+                    top = get_top_cpu_processes(10)
+                    for idx, pair in enumerate(cpu_page.top_labels):
+                        row, name_label, value_label = pair
+                        if idx < len(top):
+                            name, cpu = top[idx]
+                            name_label.setText(name)
+                            value_label.setText(f"{cpu:.1f}%")
+                            row.setVisible(True)
+                        else:
+                            row.setVisible(False)
         except Exception as exc:
             log_error("cpu_update", exc)
 
@@ -1004,6 +1210,24 @@ class DetailWindow(QtWidgets.QWidget):
             ram_page.detail_labels["total"].setText(format_bytes(sample.ram_total))
             swap = psutil.swap_memory()
             ram_page.detail_labels["swap"].setText(format_bytes(swap.used))
+            if hasattr(ram_page, "top_labels"):
+                now = time.time()
+                interval_s = max(0.5, float(self.config.data.get("update_ms", 1000)) / 1000.0)
+                if (
+                    now - self._list_last["ram"] >= interval_s
+                    and self.stack.currentWidget() == ram_page.widget
+                ):
+                    self._list_last["ram"] = now
+                    top = get_top_ram_processes(10)
+                    for idx, pair in enumerate(ram_page.top_labels):
+                        row, name_label, value_label = pair
+                        if idx < len(top):
+                            name, rss = top[idx]
+                            name_label.setText(name)
+                            value_label.setText(format_bytes(rss))
+                            row.setVisible(True)
+                        else:
+                            row.setVisible(False)
         except Exception as exc:
             log_error("ram_update", exc)
 
@@ -1148,14 +1372,10 @@ class DetailWindow(QtWidgets.QWidget):
             log_error("gpu_update", exc)
 
     def mousePressEvent(self, event: QtGui.QMouseEvent) -> None:
-        if event.button() == QtCore.Qt.MouseButton.LeftButton:
-            self._drag_pos = event.globalPosition().toPoint() - self.frameGeometry().topLeft()
-            event.accept()
+        event.ignore()
 
     def mouseMoveEvent(self, event: QtGui.QMouseEvent) -> None:
-        if event.buttons() & QtCore.Qt.MouseButton.LeftButton and self._drag_pos:
-            self.move(event.globalPosition().toPoint() - self._drag_pos)
-            event.accept()
+        event.ignore()
 
     def position_below_anchor(self, anchor: Dict) -> None:
         """Position panel directly under the clicked menu bar item."""
@@ -1181,12 +1401,13 @@ class DetailWindow(QtWidgets.QWidget):
 class SettingsWindow(QtWidgets.QWidget):
     """Settings UI to toggle visible metrics and show a live chart."""
 
-    def __init__(self, config: ConfigStore, on_apply, on_quit, on_enable_priv) -> None:
+    def __init__(self, config: ConfigStore, on_apply, on_quit, on_enable_priv, on_open_dashboard) -> None:
         super().__init__()
         self.config = config
         self.on_apply = on_apply
         self.on_quit = on_quit
         self.on_enable_priv = on_enable_priv
+        self.on_open_dashboard = on_open_dashboard
         self.cpu_history = [0.0] * 120
 
         self.setWindowTitle("Monitor Settings")
@@ -1267,27 +1488,41 @@ class SettingsWindow(QtWidgets.QWidget):
         app_layout.addWidget(self.hide_dock_check)
         layout.addWidget(app_group)
 
-        interval_row = QtWidgets.QHBoxLayout()
-        interval_label = QtWidgets.QLabel("Update interval (ms)")
-        self.interval_spin = QtWidgets.QSpinBox()
-        self.interval_spin.setRange(200, 2000)
-        self.interval_spin.setValue(self.config.data.get("update_ms", 500))
-        interval_row.addWidget(interval_label)
-        interval_row.addWidget(self.interval_spin)
-        layout.addLayout(interval_row)
+        interval_group = QtWidgets.QGroupBox("Update speed")
+        interval_layout = QtWidgets.QVBoxLayout(interval_group)
+        self.interval_buttons = {}
+        choices = [
+            ("slow", "Chậm (5s)", 5000),
+            ("medium", "Trung bình (3s)", 3000),
+            ("fast", "Nhanh (1.5s)", 1500),
+            ("fast1s", "Nhanh (1s)", 1000),
+            ("ultra", "Siêu nhanh (0.5s)", 500),
+        ]
+        current_ms = self.config.data.get("update_ms", 1000)
+        best_id = min(choices, key=lambda item: abs(item[2] - current_ms))[0]
+        for key, label, ms in choices:
+            btn = QtWidgets.QRadioButton(label)
+            btn.setChecked(key == best_id)
+            btn.setProperty("interval_ms", ms)
+            interval_layout.addWidget(btn)
+            self.interval_buttons[key] = btn
+        layout.addWidget(interval_group)
 
         buttons = QtWidgets.QHBoxLayout()
         enable_btn = QtWidgets.QPushButton("Enable GPU/SMART")
+        dashboard_btn = QtWidgets.QPushButton("Open Dashboard")
         apply_btn = QtWidgets.QPushButton("Apply")
         quit_btn = QtWidgets.QPushButton("Quit")
         close_btn = QtWidgets.QPushButton("Close")
         buttons.addWidget(enable_btn)
+        buttons.addWidget(dashboard_btn)
         buttons.addWidget(apply_btn)
         buttons.addWidget(quit_btn)
         buttons.addWidget(close_btn)
         layout.addLayout(buttons)
 
         enable_btn.clicked.connect(self.on_enable_priv)
+        dashboard_btn.clicked.connect(self.on_open_dashboard)
         apply_btn.clicked.connect(self.apply)
         quit_btn.clicked.connect(self.on_quit)
         close_btn.clicked.connect(self.close)
@@ -1331,6 +1566,7 @@ class SettingsWindow(QtWidgets.QWidget):
         self.chart_check.toggled.connect(self._apply_chart_visibility)
         self.update_status_labels()
 
+
     def _apply_chart_visibility(self) -> None:
         self.plot.setVisible(self.chart_check.isChecked())
 
@@ -1349,7 +1585,12 @@ class SettingsWindow(QtWidgets.QWidget):
         self.config.data["show"]["chart"] = self.chart_check.isChecked()
         self.config.data["start_at_login"] = self.startup_check.isChecked()
         self.config.data["hide_dock"] = self.hide_dock_check.isChecked()
-        self.config.data["update_ms"] = self.interval_spin.value()
+        interval_ms = None
+        for btn in self.interval_buttons.values():
+            if btn.isChecked():
+                interval_ms = btn.property("interval_ms")
+                break
+        self.config.data["update_ms"] = int(interval_ms) if interval_ms else 1000
         self.config.save()
         self.on_apply()
 
@@ -1369,6 +1610,424 @@ class SettingsWindow(QtWidgets.QWidget):
         label.setStyleSheet("color: #6cff6c;" if ok else "color: #ff6b6b;")
 
 
+class DashboardWindow(QtWidgets.QWidget):
+    def __init__(self, config: ConfigStore, on_show, on_close) -> None:
+        super().__init__()
+        self.config = config
+        self.on_show = on_show
+        self.on_close = on_close
+        self._list_last = {"cpu": 0.0, "ram": 0.0}
+        self.cpu_hist = [0.0] * 120
+        self.ram_hist = [0.0] * 120
+        self.gpu_hist = [0.0] * 120
+        self.disk_read_hist = [0.0] * 120
+        self.disk_write_hist = [0.0] * 120
+        self.net_down_hist = [0.0] * 120
+        self.net_up_hist = [0.0] * 120
+
+        self.setWindowTitle("System Dashboard")
+        self.setWindowModality(QtCore.Qt.WindowModality.NonModal)
+        self.setWindowFlag(QtCore.Qt.WindowType.Window, True)
+        self.resize(1100, 720)
+        self.setObjectName("dashboard-root")
+
+        root = QtWidgets.QVBoxLayout(self)
+        root.setContentsMargins(16, 16, 16, 16)
+        root.setSpacing(12)
+
+        header = QtWidgets.QHBoxLayout()
+        title = QtWidgets.QLabel("Dashboard")
+        title.setObjectName("dashboard-title")
+        header.addWidget(title)
+        header.addStretch(1)
+        root.addLayout(header)
+
+        body = QtWidgets.QHBoxLayout()
+        body.setSpacing(12)
+        root.addLayout(body, 1)
+
+        left = QtWidgets.QFrame()
+        left.setObjectName("dash-left")
+        left_layout = QtWidgets.QVBoxLayout(left)
+        left_layout.setContentsMargins(8, 8, 8, 8)
+        left_layout.setSpacing(8)
+
+        left_scroll = QtWidgets.QScrollArea()
+        left_scroll.setWidgetResizable(True)
+        left_scroll.setFrameShape(QtWidgets.QFrame.Shape.NoFrame)
+        left_layout.addWidget(left_scroll, 1)
+
+        left_content = QtWidgets.QWidget()
+        left_content_layout = QtWidgets.QVBoxLayout(left_content)
+        left_content_layout.setContentsMargins(0, 0, 0, 0)
+        left_content_layout.setSpacing(10)
+        left_scroll.setWidget(left_content)
+
+        body.addWidget(left, 1)
+
+        right = QtWidgets.QFrame()
+        right.setObjectName("dash-right")
+        right_layout = QtWidgets.QGridLayout(right)
+        right_layout.setContentsMargins(0, 0, 0, 0)
+        right_layout.setSpacing(12)
+        body.addWidget(right, 3)
+
+        # CPU
+        self.cpu_box, self.cpu_layout = self._make_section("CPU")
+        self.cpu_usage = self._add_row(self.cpu_layout, "Usage")
+        self.cpu_load1 = self._add_row(self.cpu_layout, "Load 1m")
+        self.cpu_load5 = self._add_row(self.cpu_layout, "Load 5m")
+        self.cpu_load15 = self._add_row(self.cpu_layout, "Load 15m")
+        self.cpu_cores = self._add_row(self.cpu_layout, "Cores")
+        self.cpu_uptime = self._add_row(self.cpu_layout, "Uptime")
+        self.cpu_plot = self._make_chart(self.cpu_box, "#4aa3ff", fixed_height=70, y_range=(0, 100))
+
+        self.cpu_list_box, self.cpu_list_rows = self._make_list_section(
+            "Top CPU Apps", value_color="#4aa3ff"
+        )
+        left_content_layout.addWidget(self.cpu_list_box)
+
+        # RAM
+        self.ram_box, self.ram_layout = self._make_section("RAM")
+        self.ram_usage = self._add_row(self.ram_layout, "Usage")
+        self.ram_used = self._add_row(self.ram_layout, "Used")
+        self.ram_avail = self._add_row(self.ram_layout, "Available")
+        self.ram_total = self._add_row(self.ram_layout, "Total")
+        self.ram_swap = self._add_row(self.ram_layout, "Swap Used")
+        self.ram_plot = self._make_chart(self.ram_box, "#66d1ff", fixed_height=70, y_range=(0, 100))
+
+        self.ram_list_box, self.ram_list_rows = self._make_list_section(
+            "Top RAM Apps", value_color="#66d1ff"
+        )
+        left_content_layout.addWidget(self.ram_list_box)
+        left_content_layout.addStretch(1)
+
+        # Disk
+        self.disk_box, self.disk_layout = self._make_section("Disk")
+        self.disk_usage = self._add_row(self.disk_layout, "Usage")
+        self.disk_free = self._add_row(self.disk_layout, "Free")
+        self.disk_read = self._add_row(self.disk_layout, "Read")
+        self.disk_write = self._add_row(self.disk_layout, "Write")
+        self.disk_total_read = self._add_row(self.disk_layout, "Total read")
+        self.disk_total_write = self._add_row(self.disk_layout, "Total written")
+        self.disk_smart_read = self._add_row(self.disk_layout, "SMART total read")
+        self.disk_smart_write = self._add_row(self.disk_layout, "SMART total written")
+        self.disk_temp = self._add_row(self.disk_layout, "Temperature")
+        self.disk_health = self._add_row(self.disk_layout, "Health")
+        self.disk_cycles = self._add_row(self.disk_layout, "Power cycles")
+        self.disk_hours = self._add_row(self.disk_layout, "Power on hours")
+        self.disk_plot = self._make_dual_chart(
+            self.disk_box,
+            "#ff5c5c",
+            "#4aa3ff",
+            fixed_height=70,
+        )
+
+        # Network
+        self.net_box, self.net_layout = self._make_section("Network")
+        self.net_down = self._add_row(self.net_layout, "Download")
+        self.net_up = self._add_row(self.net_layout, "Upload")
+        self.net_total_down = self._add_row(self.net_layout, "Total Down")
+        self.net_total_up = self._add_row(self.net_layout, "Total Up")
+        self.net_plot = self._make_dual_chart(
+            self.net_box,
+            "#59a6ff",
+            "#ff5c5c",
+            fixed_height=70,
+        )
+
+        # GPU
+        self.gpu_box, self.gpu_layout = self._make_section("GPU")
+        self.gpu_model = self._add_row(self.gpu_layout, "Model")
+        self.gpu_cores = self._add_row(self.gpu_layout, "Cores")
+        self.gpu_status = self._add_row(self.gpu_layout, "Status")
+        self.gpu_util = self._add_row(self.gpu_layout, "Utilization")
+        self.gpu_render = self._add_row(self.gpu_layout, "Render utilization")
+        self.gpu_tiler = self._add_row(self.gpu_layout, "Tiler utilization")
+        self.gpu_plot = self._make_chart(self.gpu_box, "#7d7bff", fixed_height=70, y_range=(0, 100))
+
+        # Fan / Temps / Power
+        self.fan_box, self.fan_layout = self._make_section("Fan")
+        self.fan_rpm = self._add_row(self.fan_layout, "RPM")
+        self.fan_percent = self._add_row(self.fan_layout, "Percent")
+
+        self.temp_box, self.temp_layout = self._make_section("Temperatures")
+        self.temp_cpu = self._add_row(self.temp_layout, "CPU")
+        self.temp_gpu = self._add_row(self.temp_layout, "GPU")
+        self.temp_ssd = self._add_row(self.temp_layout, "SSD")
+
+        self.power_box, self.power_layout = self._make_section("Power")
+        self.power_cpu = self._add_row(self.power_layout, "CPU")
+        self.power_gpu = self._add_row(self.power_layout, "GPU")
+
+        # Battery
+        self.batt_box, self.batt_layout = self._make_section("Battery")
+        self.batt_percent = self._add_row(self.batt_layout, "Percent")
+        self.batt_state = self._add_row(self.batt_layout, "Status")
+        # Right grid placement
+        right_layout.addWidget(self.cpu_box, 0, 0)
+        right_layout.addWidget(self.ram_box, 0, 1)
+        right_layout.addWidget(self.gpu_box, 0, 2)
+        right_layout.addWidget(self.disk_box, 1, 0)
+        right_layout.addWidget(self.net_box, 1, 1)
+        right_layout.addWidget(self.batt_box, 1, 2)
+        right_layout.addWidget(self.fan_box, 2, 0)
+        right_layout.addWidget(self.temp_box, 2, 1)
+        right_layout.addWidget(self.power_box, 2, 2)
+
+        self.setStyleSheet(
+            """
+            #dashboard-root {
+                background: qlineargradient(x1:0,y1:0,x2:0,y2:1,
+                stop:0 #1d1f21, stop:1 #151618);
+                color: #e6e6e6;
+            }
+            QLabel#dashboard-title { font-size: 22px; font-weight: 700; }
+            QFrame#dash-left { background: #1b1d1f; border-radius: 10px; }
+            QGroupBox {
+                border: 1px solid #2a2b2e;
+                border-radius: 10px;
+                margin-top: 10px;
+                padding: 6px;
+                background: #1f2123;
+            }
+            QGroupBox::title {
+                subcontrol-origin: margin;
+                left: 10px;
+                padding: 0 6px;
+                color: #cfcfcf;
+            }
+            QLabel.dash-label { font-size: 10px; color: #bdbdbd; }
+            QLabel.dash-value { font-size: 10px; color: #e6e6e6; }
+            """
+        )
+
+    def _make_section(self, title: str):
+        box = QtWidgets.QGroupBox(title)
+        layout = QtWidgets.QFormLayout(box)
+        layout.setContentsMargins(10, 8, 10, 8)
+        layout.setVerticalSpacing(4)
+        layout.setLabelAlignment(QtCore.Qt.AlignmentFlag.AlignLeft | QtCore.Qt.AlignmentFlag.AlignVCenter)
+        layout.setFormAlignment(QtCore.Qt.AlignmentFlag.AlignLeft | QtCore.Qt.AlignmentFlag.AlignTop)
+        layout.setFieldGrowthPolicy(QtWidgets.QFormLayout.FieldGrowthPolicy.ExpandingFieldsGrow)
+        return box, layout
+
+    def _make_chart(self, box: QtWidgets.QGroupBox, color: str, fixed_height: int = 70, y_range=None):
+        plot = pg.PlotWidget()
+        plot.setBackground((20, 20, 20))
+        plot.showGrid(x=True, y=True, alpha=0.2)
+        plot.setMouseEnabled(x=False, y=False)
+        plot.hideButtons()
+        plot.setMenuEnabled(False)
+        if y_range is not None:
+            plot.setYRange(y_range[0], y_range[1])
+        curve = plot.plot(pen=pg.mkPen(color=color, width=2))
+        style_plot(plot)
+        plot.setFixedHeight(fixed_height)
+        box.layout().addRow(QtWidgets.QLabel("Chart"), plot)
+        return (plot, curve)
+
+    def _make_dual_chart(self, box: QtWidgets.QGroupBox, color_a: str, color_b: str, fixed_height: int = 70):
+        plot = pg.PlotWidget()
+        plot.setBackground((20, 20, 20))
+        plot.showGrid(x=True, y=True, alpha=0.2)
+        plot.setMouseEnabled(x=False, y=False)
+        plot.hideButtons()
+        plot.setMenuEnabled(False)
+        curve_a = plot.plot(pen=pg.mkPen(color=color_a, width=2))
+        curve_b = plot.plot(pen=pg.mkPen(color=color_b, width=2))
+        style_plot(plot)
+        plot.setFixedHeight(fixed_height)
+        box.layout().addRow(QtWidgets.QLabel("Chart"), plot)
+        return (plot, curve_a, curve_b)
+
+    def _add_row(self, layout: QtWidgets.QFormLayout, label_text: str) -> QtWidgets.QLabel:
+        label = QtWidgets.QLabel(label_text)
+        label.setObjectName("dash-label")
+        label.setProperty("class", "dash-label")
+        label.setStyleSheet("font-size: 10px; color: #bdbdbd;")
+        label.setAlignment(QtCore.Qt.AlignmentFlag.AlignLeft | QtCore.Qt.AlignmentFlag.AlignVCenter)
+        value = QtWidgets.QLabel("--")
+        value.setObjectName("dash-value")
+        value.setProperty("class", "dash-value")
+        value.setStyleSheet("font-size: 10px; color: #e6e6e6;")
+        value.setAlignment(QtCore.Qt.AlignmentFlag.AlignRight | QtCore.Qt.AlignmentFlag.AlignVCenter)
+        value.setSizePolicy(QtWidgets.QSizePolicy.Policy.Expanding, QtWidgets.QSizePolicy.Policy.Fixed)
+        layout.addRow(label, value)
+        return value
+
+    def _make_list_section(self, title: str, value_color: str):
+        box = QtWidgets.QGroupBox(title)
+        layout = QtWidgets.QVBoxLayout(box)
+        layout.setContentsMargins(10, 8, 10, 8)
+        layout.setSpacing(4)
+        rows = []
+        for _ in range(10):
+            row = QtWidgets.QWidget()
+            row_layout = QtWidgets.QHBoxLayout(row)
+            row_layout.setContentsMargins(8, 2, 8, 2)
+            row_layout.setSpacing(6)
+            name_label = QtWidgets.QLabel("--")
+            name_label.setStyleSheet("font-size: 9px;")
+            name_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignLeft | QtCore.Qt.AlignmentFlag.AlignVCenter)
+            name_label.setSizePolicy(QtWidgets.QSizePolicy.Policy.Expanding, QtWidgets.QSizePolicy.Policy.Fixed)
+            value_label = QtWidgets.QLabel("--")
+            value_label.setStyleSheet(f"font-size: 9px; color: {value_color};")
+            value_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignRight | QtCore.Qt.AlignmentFlag.AlignVCenter)
+            value_label.setSizePolicy(QtWidgets.QSizePolicy.Policy.Fixed, QtWidgets.QSizePolicy.Policy.Fixed)
+            row_layout.addWidget(name_label)
+            row_layout.addWidget(value_label)
+            row.setVisible(False)
+            layout.addWidget(row)
+            rows.append((row, name_label, value_label))
+        return box, rows
+
+    def _update_list(self, rows, items, formatter):
+        for idx, triple in enumerate(rows):
+            row, name_label, value_label = triple
+            if idx < len(items):
+                name, value = items[idx]
+                name_label.setText(name)
+                value_label.setText(formatter(value))
+                row.setVisible(True)
+            else:
+                row.setVisible(False)
+
+    def update_from_sample(self, sample: SystemSample) -> None:
+        try:
+            self.cpu_usage.setText(f"{sample.cpu_percent:.0f}%")
+            try:
+                load_1, load_5, load_15 = os.getloadavg()
+            except Exception:
+                load_1, load_5, load_15 = 0.0, 0.0, 0.0
+            self.cpu_load1.setText(f"{load_1:.2f}")
+            self.cpu_load5.setText(f"{load_5:.2f}")
+            self.cpu_load15.setText(f"{load_15:.2f}")
+            self.cpu_cores.setText(str(psutil.cpu_count(logical=True)))
+            uptime_seconds = int(time.time() - psutil.boot_time())
+            self.cpu_uptime.setText(format_uptime(uptime_seconds))
+            self.cpu_hist = (self.cpu_hist + [sample.cpu_percent])[-len(self.cpu_hist) :]
+            self.cpu_plot[1].setData(self.cpu_hist)
+
+            self.ram_usage.setText(f"{sample.ram_percent:.0f}%")
+            self.ram_used.setText(format_bytes(sample.ram_used))
+            self.ram_avail.setText(format_bytes(sample.ram_available))
+            self.ram_total.setText(format_bytes(sample.ram_total))
+            swap = psutil.swap_memory()
+            self.ram_swap.setText(format_bytes(swap.used))
+            self.ram_hist = (self.ram_hist + [sample.ram_percent])[-len(self.ram_hist) :]
+            self.ram_plot[1].setData(self.ram_hist)
+
+            total_b, free_b, percent = get_disk_usage_info()
+            used_b = max(0, total_b - free_b)
+            self.disk_usage.setText(f"{percent:.0f}%")
+            self.disk_free.setText(format_bytes(free_b))
+            self.disk_read.setText(format_rate(sample.disk_read_bps))
+            self.disk_write.setText(format_rate(sample.disk_write_bps))
+            disk_io = psutil.disk_io_counters()
+            self.disk_total_read.setText(format_bytes(disk_io.read_bytes))
+            self.disk_total_write.setText(format_bytes(disk_io.write_bytes))
+            meta = get_disk_meta()
+            self.disk_smart_read.setText(meta.get("smart_total_read", "N/A"))
+            self.disk_smart_write.setText(meta.get("smart_total_write", "N/A"))
+            self.disk_temp.setText(meta.get("temperature", "N/A"))
+            self.disk_health.setText(meta.get("health", "N/A"))
+            self.disk_cycles.setText(meta.get("power_cycles", "N/A"))
+            self.disk_hours.setText(meta.get("power_on_hours", "N/A"))
+            read_kb = sample.disk_read_bps / 1024
+            write_kb = sample.disk_write_bps / 1024
+            self.disk_read_hist = (self.disk_read_hist + [read_kb])[-len(self.disk_read_hist) :]
+            self.disk_write_hist = (self.disk_write_hist + [write_kb])[-len(self.disk_write_hist) :]
+            self.disk_plot[1].setData(self.disk_read_hist)
+            self.disk_plot[2].setData(self.disk_write_hist)
+
+            self.net_down.setText(format_rate(sample.net_down_bps))
+            self.net_up.setText(format_rate(sample.net_up_bps))
+            net_io = psutil.net_io_counters()
+            self.net_total_down.setText(format_bytes(net_io.bytes_recv))
+            self.net_total_up.setText(format_bytes(net_io.bytes_sent))
+            down_kb = sample.net_down_bps / 1024
+            up_kb = sample.net_up_bps / 1024
+            self.net_down_hist = (self.net_down_hist + [down_kb])[-len(self.net_down_hist) :]
+            self.net_up_hist = (self.net_up_hist + [up_kb])[-len(self.net_up_hist) :]
+            self.net_plot[1].setData(self.net_down_hist)
+            self.net_plot[2].setData(self.net_up_hist)
+
+            info = get_gpu_static_info()
+            self.gpu_model.setText(info.get("model") or "Apple GPU")
+            self.gpu_cores.setText(str(info.get("cores")) if info.get("cores") else "N/A")
+            if sample.gpu_device_percent is None and sample.gpu_render_percent is None:
+                self.gpu_status.setText("No GPU data")
+                self.gpu_util.setText("N/A")
+                self.gpu_render.setText("N/A")
+                self.gpu_tiler.setText("N/A")
+            else:
+                self.gpu_status.setText("Active")
+                if sample.gpu_device_percent is not None:
+                    self.gpu_util.setText(f"{sample.gpu_device_percent:.1f}%")
+                else:
+                    self.gpu_util.setText("N/A")
+                if sample.gpu_render_percent is not None:
+                    self.gpu_render.setText(f"{sample.gpu_render_percent:.1f}%")
+                else:
+                    self.gpu_render.setText("N/A")
+                if sample.gpu_tiler_percent is not None:
+                    self.gpu_tiler.setText(f"{sample.gpu_tiler_percent:.1f}%")
+                else:
+                    self.gpu_tiler.setText("N/A")
+            gpu_value = sample.gpu_device_percent or sample.gpu_render_percent or 0.0
+            self.gpu_hist = (self.gpu_hist + [gpu_value])[-len(self.gpu_hist) :]
+            self.gpu_plot[1].setData(self.gpu_hist)
+
+            fan = get_fan_status()
+            if fan.get("rpm") is None:
+                self.fan_rpm.setText("N/A")
+                self.fan_percent.setText("N/A")
+            else:
+                self.fan_rpm.setText(f"{fan.get('rpm'):.0f} RPM")
+                percent = fan.get("percent") or 0.0
+                self.fan_percent.setText(f"{percent:.0f}%")
+
+            temps = get_thermal_info()
+            self.temp_cpu.setText(temps.get("cpu") or "N/A")
+            self.temp_gpu.setText(temps.get("gpu") or "N/A")
+            self.temp_ssd.setText(temps.get("ssd") or "N/A")
+
+            power = get_power_info()
+            self.power_cpu.setText(power.get("cpu") or "N/A")
+            self.power_gpu.setText(power.get("gpu") or "N/A")
+
+            batt = get_battery_info()
+            if batt.get("percent") is not None:
+                self.batt_percent.setText(f"{batt['percent']:.0f}%")
+            else:
+                self.batt_percent.setText("N/A")
+            self.batt_state.setText(batt.get("state") or "No battery")
+
+            now = time.time()
+            interval_s = max(0.5, float(self.config.data.get("update_ms", 1000)) / 1000.0)
+            if now - self._list_last["cpu"] >= interval_s:
+                self._list_last["cpu"] = now
+                cpu_top = get_top_cpu_processes(10)
+                self._update_list(self.cpu_list_rows, cpu_top, lambda v: f"{v:.1f}%")
+            if now - self._list_last["ram"] >= interval_s:
+                self._list_last["ram"] = now
+                ram_top = get_top_ram_processes(10)
+                self._update_list(self.ram_list_rows, ram_top, format_bytes)
+        except Exception as exc:
+            log_error("dashboard_update", exc)
+
+    def showEvent(self, event: QtGui.QShowEvent) -> None:
+        super().showEvent(event)
+        if self.on_show:
+            self.on_show()
+
+    def closeEvent(self, event: QtGui.QCloseEvent) -> None:
+        if self.on_close:
+            self.on_close()
+        super().closeEvent(event)
+
+
 class AppController(QtCore.QObject):
     """Wires together config, menu bar, settings UI, and metrics hub."""
 
@@ -1385,6 +2044,7 @@ class AppController(QtCore.QObject):
         self.menu_bar = MenuBarController(self.config, self)
         self.detail_window = DetailWindow(self.config, self.open_settings, QtWidgets.QApplication.quit)
         self.settings = None
+        self.dashboard = None
 
         self.hub.updated.connect(self._on_sample)
         self.detail_window._on_show = self._on_detail_show
@@ -1398,9 +2058,27 @@ class AppController(QtCore.QObject):
                 self.apply_settings,
                 QtWidgets.QApplication.quit,
                 self.enable_privileges,
+                self.open_dashboard,
             )
         self.settings.show()
         self.settings.raise_()
+
+    def open_dashboard(self) -> None:
+        if self.dashboard is None:
+            self.dashboard = DashboardWindow(
+                self.config,
+                lambda: apply_dock_visibility(False),
+                lambda: apply_dock_visibility(self.config.data.get("hide_dock", False)),
+            )
+        self.dashboard.show()
+        self.dashboard.raise_()
+        self.dashboard.activateWindow()
+        try:
+            NSApplication.sharedApplication().activateIgnoringOtherApps_(True)
+        except Exception:
+            pass
+        if self.last_sample:
+            self.dashboard.update_from_sample(self.last_sample)
 
     def apply_settings(self) -> None:
         self.hub.set_interval(self.config.data["update_ms"])
@@ -1436,6 +2114,8 @@ class AppController(QtCore.QObject):
         self.last_sample = sample
         self.menu_bar.update_from_sample(sample)
         self.detail_window.update_from_sample(sample)
+        if self.dashboard is not None:
+            self.dashboard.update_from_sample(sample)
         if self.settings is not None:
             self.settings.update_from_sample(sample)
 
@@ -1600,6 +2280,46 @@ def format_bytes(value: float) -> str:
     return f"{size:.1f} PB"
 
 
+def format_power_watts(value_w: float) -> str:
+    if value_w >= 1.0:
+        return f"{value_w:.2f} W"
+    return f"{value_w * 1000.0:.0f} mW"
+
+
+def get_top_ram_processes(limit: int = 10) -> list[tuple[str, int]]:
+    items: list[tuple[str, int]] = []
+    for proc in psutil.process_iter(attrs=["name", "pid", "memory_info"]):
+        try:
+            info = proc.info
+            name = info.get("name") or f"PID {info.get('pid')}"
+            mem = info.get("memory_info")
+            if mem is None:
+                continue
+            rss = int(mem.rss)
+            items.append((name, rss))
+        except (psutil.NoSuchProcess, psutil.AccessDenied):
+            continue
+        except Exception:
+            continue
+    items.sort(key=lambda x: x[1], reverse=True)
+    return items[:limit]
+
+
+def get_top_cpu_processes(limit: int = 10) -> list[tuple[str, float]]:
+    items: list[tuple[str, float]] = []
+    for proc in psutil.process_iter(attrs=["name", "pid"]):
+        try:
+            name = proc.info.get("name") or f"PID {proc.info.get('pid')}"
+            cpu = proc.cpu_percent(interval=None)
+            items.append((name, float(cpu)))
+        except (psutil.NoSuchProcess, psutil.AccessDenied):
+            continue
+        except Exception:
+            continue
+    items.sort(key=lambda x: x[1], reverse=True)
+    return items[:limit]
+
+
 def format_uptime(seconds: int) -> str:
     days, rem = divmod(seconds, 86400)
     hours, rem = divmod(rem, 3600)
@@ -1629,6 +2349,178 @@ def log_error(context: str, exc: Exception) -> None:
             handle.write(f"{time.strftime('%Y-%m-%d %H:%M:%S')} {context}: {exc}\n")
     except Exception:
         pass
+
+
+_POWERMETRICS_CACHE: dict[str, dict[str, object]] = {}
+_BATTERY_CACHE: dict[str, object] = {"ts": 0.0, "data": None}
+
+
+def _read_powermetrics(samplers: str, ttl: float = 1.0) -> str:
+    now = time.time()
+    cached = _POWERMETRICS_CACHE.get(samplers)
+    if cached and (now - cached["ts"] < ttl):
+        return cached.get("text", "") or ""
+
+    powermetrics = "/usr/bin/powermetrics"
+    if not os.path.exists(powermetrics):
+        _POWERMETRICS_CACHE[samplers] = {"ts": now, "text": ""}
+        return ""
+
+    def _run(cmd):
+        try:
+            return subprocess.run(
+                cmd,
+                capture_output=True,
+                text=True,
+                timeout=4,
+            )
+        except Exception as exc:
+            log_error("powermetrics_run", exc)
+            return None
+
+    output = ""
+    result = _run(["sudo", "-n", powermetrics, "--samplers", samplers, "-n", "1", "-i", "1000"])
+    if result is not None:
+        output = (result.stdout or "") + ("\n" + result.stderr if result.stderr else "")
+
+    if result is None or result.returncode != 0 or not output.strip():
+        result = _run([powermetrics, "--samplers", samplers, "-n", "1", "-i", "1000"])
+        output = ""
+        if result is not None:
+            output = (result.stdout or "") + ("\n" + result.stderr if result.stderr else "")
+
+    if result is None or result.returncode != 0:
+        output = ""
+
+    _POWERMETRICS_CACHE[samplers] = {"ts": now, "text": output}
+    return output
+
+
+def get_fan_status() -> dict:
+    try:
+        output = _read_powermetrics("smc")
+        rpm = None
+        max_rpm = None
+        for line in output.splitlines():
+            if not re.search(r"fan", line, re.IGNORECASE):
+                continue
+            if rpm is None:
+                match = re.search(r"([0-9.]+)\s*rpm", line, re.IGNORECASE)
+                if match:
+                    rpm = float(match.group(1))
+            if max_rpm is None:
+                match = re.search(r"max[^0-9]*([0-9.]+)\s*rpm", line, re.IGNORECASE)
+                if match:
+                    max_rpm = float(match.group(1))
+        percent = None
+        if rpm is not None and max_rpm:
+            percent = max(0.0, min(100.0, rpm / max_rpm * 100.0))
+        return {"rpm": rpm, "percent": percent}
+    except Exception as exc:
+        log_error("fan_status", exc)
+        return {"rpm": None, "percent": None}
+
+
+def _find_temp(output: str, patterns: list[str]) -> float | None:
+    for line in output.splitlines():
+        for pattern in patterns:
+            if re.search(pattern, line, re.IGNORECASE):
+                match = re.search(r"([0-9.]+)\s*(?:°?C|c)", line)
+                if match:
+                    return float(match.group(1))
+    return None
+
+
+def get_thermal_info() -> dict:
+    temps = {"cpu": None, "gpu": None, "ssd": None}
+    try:
+        output = _read_powermetrics("smc")
+        cpu = _find_temp(output, ["CPU die temperature", "CPU temperature", r"\bCPU Temp"])
+        gpu = _find_temp(output, ["GPU die temperature", "GPU temperature", r"\bGPU Temp"])
+        if cpu is not None:
+            temps["cpu"] = f"{cpu:.0f}°C"
+        if gpu is not None:
+            temps["gpu"] = f"{gpu:.0f}°C"
+    except Exception as exc:
+        log_error("thermal_info", exc)
+    try:
+        ssd = get_disk_meta().get("temperature")
+        if ssd:
+            temps["ssd"] = ssd
+    except Exception:
+        pass
+    return temps
+
+
+def _find_power(output: str, label: str) -> float | None:
+    for line in output.splitlines():
+        if not re.search(label, line, re.IGNORECASE):
+            continue
+        if not re.search("power", line, re.IGNORECASE):
+            continue
+        match = re.search(r"([0-9.]+)\s*(mW|W)", line, re.IGNORECASE)
+        if match:
+            value = float(match.group(1))
+            unit = match.group(2).lower()
+            return value / 1000.0 if unit == "mw" else value
+    return None
+
+
+def get_power_info() -> dict:
+    try:
+        output = _read_powermetrics("cpu_power,gpu_power")
+        cpu_w = _find_power(output, "CPU")
+        gpu_w = _find_power(output, "GPU")
+        return {
+            "cpu": format_power_watts(cpu_w) if cpu_w is not None else None,
+            "gpu": format_power_watts(gpu_w) if gpu_w is not None else None,
+        }
+    except Exception as exc:
+        log_error("power_info", exc)
+        return {"cpu": None, "gpu": None}
+
+
+def get_battery_info(ttl: float = 5.0) -> dict:
+    now = time.time()
+    cached = _BATTERY_CACHE.get("data")
+    if cached and (now - float(_BATTERY_CACHE.get("ts", 0.0)) < ttl):
+        return cached
+
+    data = {"percent": None, "state": None}
+    try:
+        batt = psutil.sensors_battery()
+        if batt:
+            data["percent"] = batt.percent
+            data["state"] = "Charging" if batt.power_plugged else "On battery"
+            _BATTERY_CACHE.update({"ts": now, "data": data})
+            return data
+    except Exception:
+        pass
+
+    try:
+        result = subprocess.run(
+            ["/usr/bin/pmset", "-g", "batt"],
+            capture_output=True,
+            text=True,
+            timeout=2,
+        )
+        text = (result.stdout or "") + ("\n" + result.stderr if result.stderr else "")
+        if result.returncode == 0 and text:
+            lower = text.lower()
+            match = re.search(r"(\d+)%", lower)
+            if match:
+                data["percent"] = float(match.group(1))
+            if "charging" in lower or "ac power" in lower:
+                data["state"] = "Charging"
+            elif "discharging" in lower or "battery power" in lower:
+                data["state"] = "On battery"
+            elif "charged" in lower:
+                data["state"] = "Charged"
+    except Exception as exc:
+        log_error("battery_info", exc)
+
+    _BATTERY_CACHE.update({"ts": now, "data": data})
+    return data
 
 
 def get_app_bundle_path() -> Path | None:
