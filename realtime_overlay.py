@@ -1155,12 +1155,25 @@ class DetailWindow(QtWidgets.QWidget):
         )
         self.stack.setCurrentWidget(page.widget)
         self._schedule_resize(page.widget)
+        if key == "net":
+            self._refresh_net_charts()
         if anchor:
             self.position_below_anchor(anchor)
         self.show()
         self.raise_()
         if hasattr(self, "_on_show"):
             self._on_show()
+
+    def _refresh_net_charts(self) -> None:
+        net_page = self.pages.get("net")
+        if net_page is None or not hasattr(net_page, "curve_down"):
+            return
+        net_page.curve_down.setData(self.history["net_down"])
+        net_page.curve_up.setData(self.history["net_up"])
+        if hasattr(net_page, "plot_down"):
+            net_page.plot_down.repaint()
+        if hasattr(net_page, "plot_up"):
+            net_page.plot_up.repaint()
 
     def update_from_sample(self, sample: SystemSample) -> None:
         try:
@@ -1288,12 +1301,18 @@ class DetailWindow(QtWidgets.QWidget):
             net_page.main_value.setText(
                 f"{format_rate_short(sample.net_down_bps)}/{format_rate_short(sample.net_up_bps)}"
             )
-            net_down = sample.net_down_bps / 1024
-            net_up = sample.net_up_bps / 1024
+            net_down = max(0.0, sample.net_down_bps / 1024)
+            net_up = max(0.0, sample.net_up_bps / 1024)
             self.history["net"] = (self.history["net"] + [net_down + net_up])[-len(self.history["net"]) :]
             self.history["net_down"] = (self.history["net_down"] + [net_down])[-len(self.history["net_down"]) :]
             self.history["net_up"] = (self.history["net_up"] + [net_up])[-len(self.history["net_up"]) :]
             if hasattr(net_page, "curve_down") and hasattr(net_page, "curve_up"):
+                if hasattr(net_page, "plot_down"):
+                    down_max = max(1.0, max(self.history["net_down"]) * 1.2)
+                    net_page.plot_down.setYRange(0, down_max)
+                if hasattr(net_page, "plot_up"):
+                    up_max = max(1.0, max(self.history["net_up"]) * 1.2)
+                    net_page.plot_up.setYRange(0, up_max)
                 net_page.curve_down.setData(self.history["net_down"])
                 net_page.curve_up.setData(self.history["net_up"])
             else:
@@ -1946,8 +1965,8 @@ class DashboardWindow(QtWidgets.QWidget):
             net_io = psutil.net_io_counters()
             self.net_total_down.setText(format_bytes(net_io.bytes_recv))
             self.net_total_up.setText(format_bytes(net_io.bytes_sent))
-            down_kb = sample.net_down_bps / 1024
-            up_kb = sample.net_up_bps / 1024
+            down_kb = max(0.0, sample.net_down_bps / 1024)
+            up_kb = max(0.0, sample.net_up_bps / 1024)
             self.net_down_hist = (self.net_down_hist + [down_kb])[-len(self.net_down_hist) :]
             self.net_up_hist = (self.net_up_hist + [up_kb])[-len(self.net_up_hist) :]
             self.net_plot[1].setData(self.net_down_hist)
