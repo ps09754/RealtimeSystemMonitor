@@ -36,6 +36,8 @@ from AppKit import (
     NSForegroundColorAttributeName,
     NSImage,
     NSImageOnly,
+    NSWorkspace,
+    NSBitmapImageRep,
     NSApplication,
     NSApplicationActivationPolicyAccessory,
     NSApplicationActivationPolicyRegular,
@@ -51,6 +53,11 @@ from Foundation import (
     NSURLVolumeTotalCapacityKey,
 )
 import objc
+
+try:
+    from AppKit import NSBitmapImageFileTypePNG
+except Exception:
+    NSBitmapImageFileTypePNG = 4
 
 
 APP_NAME = "Realtime System Monitor"
@@ -943,6 +950,11 @@ class DetailWindow(QtWidgets.QWidget):
             row_layout.setContentsMargins(8, 2, 8, 2)
             row_layout.setSpacing(6)
 
+            icon_label = QtWidgets.QLabel()
+            icon_label.setFixedSize(16, 16)
+            icon_label.setScaledContents(True)
+            icon_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignLeft | QtCore.Qt.AlignmentFlag.AlignVCenter)
+
             name_label = QtWidgets.QLabel("--")
             name_label.setStyleSheet("font-size: 9px;")
             name_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignLeft | QtCore.Qt.AlignmentFlag.AlignVCenter)
@@ -959,11 +971,12 @@ class DetailWindow(QtWidgets.QWidget):
                 QtWidgets.QSizePolicy.Policy.Fixed,
             )
 
+            row_layout.addWidget(icon_label)
             row_layout.addWidget(name_label)
             row_layout.addWidget(value_label)
             cpu_top_layout.addWidget(row)
             row.setVisible(False)
-            cpu_page.top_labels.append((row, name_label, value_label))
+            cpu_page.top_labels.append((row, icon_label, name_label, value_label))
         cpu_page.widget.layout().addWidget(cpu_top)
 
         ram_page = self.pages["ram"]
@@ -977,6 +990,11 @@ class DetailWindow(QtWidgets.QWidget):
             row_layout = QtWidgets.QHBoxLayout(row)
             row_layout.setContentsMargins(8, 2, 8, 2)
             row_layout.setSpacing(6)
+
+            icon_label = QtWidgets.QLabel()
+            icon_label.setFixedSize(16, 16)
+            icon_label.setScaledContents(True)
+            icon_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignLeft | QtCore.Qt.AlignmentFlag.AlignVCenter)
 
             name_label = QtWidgets.QLabel("--")
             name_label.setStyleSheet("font-size: 9px;")
@@ -994,11 +1012,12 @@ class DetailWindow(QtWidgets.QWidget):
                 QtWidgets.QSizePolicy.Policy.Fixed,
             )
 
+            row_layout.addWidget(icon_label)
             row_layout.addWidget(name_label)
             row_layout.addWidget(value_label)
             ram_top_layout.addWidget(row)
             row.setVisible(False)
-            ram_page.top_labels.append((row, name_label, value_label))
+            ram_page.top_labels.append((row, icon_label, name_label, value_label))
         ram_page.widget.layout().addWidget(ram_top)
 
         if hasattr(ram_page, "details_layout"):
@@ -1202,11 +1221,16 @@ class DetailWindow(QtWidgets.QWidget):
                     self._list_last["cpu"] = now
                     top = get_top_cpu_processes(10)
                     for idx, pair in enumerate(cpu_page.top_labels):
-                        row, name_label, value_label = pair
+                        row, icon_label, name_label, value_label = pair
                         if idx < len(top):
-                            name, cpu = top[idx]
+                            name, cpu, pid = top[idx]
                             name_label.setText(name)
                             value_label.setText(f"{cpu:.1f}%")
+                            icon = get_app_icon_for_pid(pid, name)
+                            if icon is not None:
+                                icon_label.setPixmap(icon)
+                            else:
+                                icon_label.clear()
                             row.setVisible(True)
                         else:
                             row.setVisible(False)
@@ -1233,11 +1257,16 @@ class DetailWindow(QtWidgets.QWidget):
                     self._list_last["ram"] = now
                     top = get_top_ram_processes(10)
                     for idx, pair in enumerate(ram_page.top_labels):
-                        row, name_label, value_label = pair
+                        row, icon_label, name_label, value_label = pair
                         if idx < len(top):
-                            name, rss = top[idx]
+                            name, rss, pid = top[idx]
                             name_label.setText(name)
                             value_label.setText(format_bytes(rss))
+                            icon = get_app_icon_for_pid(pid, name)
+                            if icon is not None:
+                                icon_label.setPixmap(icon)
+                            else:
+                                icon_label.clear()
                             row.setVisible(True)
                         else:
                             row.setVisible(False)
@@ -1886,6 +1915,10 @@ class DashboardWindow(QtWidgets.QWidget):
             row_layout = QtWidgets.QHBoxLayout(row)
             row_layout.setContentsMargins(8, 2, 8, 2)
             row_layout.setSpacing(6)
+            icon_label = QtWidgets.QLabel()
+            icon_label.setFixedSize(16, 16)
+            icon_label.setScaledContents(True)
+            icon_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignLeft | QtCore.Qt.AlignmentFlag.AlignVCenter)
             name_label = QtWidgets.QLabel("--")
             name_label.setStyleSheet("font-size: 9px;")
             name_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignLeft | QtCore.Qt.AlignmentFlag.AlignVCenter)
@@ -1894,20 +1927,31 @@ class DashboardWindow(QtWidgets.QWidget):
             value_label.setStyleSheet(f"font-size: 9px; color: {value_color};")
             value_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignRight | QtCore.Qt.AlignmentFlag.AlignVCenter)
             value_label.setSizePolicy(QtWidgets.QSizePolicy.Policy.Fixed, QtWidgets.QSizePolicy.Policy.Fixed)
+            row_layout.addWidget(icon_label)
             row_layout.addWidget(name_label)
             row_layout.addWidget(value_label)
             row.setVisible(False)
             layout.addWidget(row)
-            rows.append((row, name_label, value_label))
+            rows.append((row, icon_label, name_label, value_label))
         return box, rows
 
     def _update_list(self, rows, items, formatter):
         for idx, triple in enumerate(rows):
-            row, name_label, value_label = triple
+            row, icon_label, name_label, value_label = triple
             if idx < len(items):
-                name, value = items[idx]
+                item = items[idx]
+                if len(item) >= 2:
+                    name, value = item[0], item[1]
+                else:
+                    name, value = "--", 0
+                pid = item[2] if len(item) >= 3 else 0
                 name_label.setText(name)
                 value_label.setText(formatter(value))
+                icon = get_app_icon_for_pid(pid, name) if pid else None
+                if icon is not None:
+                    icon_label.setPixmap(icon)
+                else:
+                    icon_label.clear()
                 row.setVisible(True)
             else:
                 row.setVisible(False)
@@ -2305,8 +2349,8 @@ def format_power_watts(value_w: float) -> str:
     return f"{value_w * 1000.0:.0f} mW"
 
 
-def get_top_ram_processes(limit: int = 10) -> list[tuple[str, int]]:
-    items: list[tuple[str, int]] = []
+def get_top_ram_processes(limit: int = 10) -> list[tuple[str, int, int]]:
+    items: list[tuple[str, int, int]] = []
     for proc in psutil.process_iter(attrs=["name", "pid", "memory_info"]):
         try:
             info = proc.info
@@ -2315,7 +2359,8 @@ def get_top_ram_processes(limit: int = 10) -> list[tuple[str, int]]:
             if mem is None:
                 continue
             rss = int(mem.rss)
-            items.append((name, rss))
+            pid = int(info.get("pid") or 0)
+            items.append((name, rss, pid))
         except (psutil.NoSuchProcess, psutil.AccessDenied):
             continue
         except Exception:
@@ -2324,13 +2369,14 @@ def get_top_ram_processes(limit: int = 10) -> list[tuple[str, int]]:
     return items[:limit]
 
 
-def get_top_cpu_processes(limit: int = 10) -> list[tuple[str, float]]:
-    items: list[tuple[str, float]] = []
+def get_top_cpu_processes(limit: int = 10) -> list[tuple[str, float, int]]:
+    items: list[tuple[str, float, int]] = []
     for proc in psutil.process_iter(attrs=["name", "pid"]):
         try:
             name = proc.info.get("name") or f"PID {proc.info.get('pid')}"
             cpu = proc.cpu_percent(interval=None)
-            items.append((name, float(cpu)))
+            pid = int(proc.info.get("pid") or 0)
+            items.append((name, float(cpu), pid))
         except (psutil.NoSuchProcess, psutil.AccessDenied):
             continue
         except Exception:
@@ -2368,6 +2414,59 @@ def log_error(context: str, exc: Exception) -> None:
             handle.write(f"{time.strftime('%Y-%m-%d %H:%M:%S')} {context}: {exc}\n")
     except Exception:
         pass
+
+
+_APP_ICON_CACHE: dict[str, QtGui.QPixmap | None] = {}
+
+
+def _nsimage_to_pixmap(image: NSImage, size: int = 16) -> QtGui.QPixmap | None:
+    try:
+        image.setSize_((size, size))
+        rep = NSBitmapImageRep.alloc().initWithData_(image.TIFFRepresentation())
+        if rep is None:
+            return None
+        png_type = NSBitmapImageFileTypePNG
+        data = rep.representationUsingType_properties_(png_type, None)
+        if data is None:
+            return None
+        pixmap = QtGui.QPixmap()
+        if pixmap.loadFromData(bytes(data)):
+            return pixmap
+        return None
+    except Exception as exc:
+        log_error("icon_convert", exc)
+        return None
+
+
+def get_app_icon_for_pid(pid: int, fallback_name: str | None = None) -> QtGui.QPixmap | None:
+    try:
+        proc = psutil.Process(pid)
+        path = proc.exe()
+    except Exception:
+        path = None
+
+    app_path = None
+    if path:
+        if ".app/" in path:
+            app_path = path.split(".app/")[0] + ".app"
+        else:
+            app_path = path
+
+    if not app_path:
+        return None
+
+    if app_path in _APP_ICON_CACHE:
+        return _APP_ICON_CACHE[app_path]
+
+    try:
+        icon = NSWorkspace.sharedWorkspace().iconForFile_(app_path)
+        pixmap = _nsimage_to_pixmap(icon, 16) if icon is not None else None
+        _APP_ICON_CACHE[app_path] = pixmap
+        return pixmap
+    except Exception as exc:
+        log_error("app_icon", exc)
+        _APP_ICON_CACHE[app_path] = None
+        return None
 
 
 _POWERMETRICS_CACHE: dict[str, dict[str, object]] = {}
