@@ -38,6 +38,7 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
+    icon=['build/AppIcon.icns'],
 )
 coll = COLLECT(
     exe,
@@ -51,6 +52,6 @@ coll = COLLECT(
 app = BUNDLE(
     coll,
     name='RealtimeSystemMonitor.app',
-    icon=None,
+    icon='build/AppIcon.icns',
     bundle_identifier=None,
 )

@@ -81,9 +81,9 @@ DEFAULT_CONFIG = {
 @dataclass
 class SystemSample:
     cpu_percent: float
-    gpu_percent: float | None
-    gpu_freq_mhz: float | None
-    gpu_power_mw: float | None
+    gpu_device_percent: float | None
+    gpu_render_percent: float | None
+    gpu_tiler_percent: float | None
     ram_percent: float
     ram_used: int
     ram_available: int
@@ -130,9 +130,9 @@ class SystemStats:
         self._last_net = psutil.net_io_counters(pernic=True)
         self._net_iface = None
         self._last_time = time.time()
-        self._gpu_percent = None
-        self._gpu_freq_mhz = None
-        self._gpu_power_mw = None
+        self._gpu_device = None
+        self._gpu_render = None
+        self._gpu_tiler = None
         self._gpu_lock = threading.Lock()
         psutil.cpu_percent(interval=None)
         self._start_gpu_sampler()
@@ -143,11 +143,11 @@ class SystemStats:
 
     def _gpu_loop(self) -> None:
         while True:
-            metrics = read_gpu_metrics_powermetrics()
+            metrics = read_gpu_metrics()
             with self._gpu_lock:
-                self._gpu_percent = metrics.get("percent")
-                self._gpu_freq_mhz = metrics.get("freq_mhz")
-                self._gpu_power_mw = metrics.get("power_mw")
+                self._gpu_device = metrics.get("device")
+                self._gpu_render = metrics.get("render")
+                self._gpu_tiler = metrics.get("tiler")
             time.sleep(2.0)
 
     def _pick_net_iface(self, pernic) -> str | None:
@@ -169,9 +169,9 @@ class SystemStats:
 
         cpu_percent = psutil.cpu_percent(interval=None)
         with self._gpu_lock:
-            gpu_percent = self._gpu_percent
-            gpu_freq_mhz = self._gpu_freq_mhz
-            gpu_power_mw = self._gpu_power_mw
+            gpu_device = self._gpu_device
+            gpu_render = self._gpu_render
+            gpu_tiler = self._gpu_tiler
 
         mem = psutil.virtual_memory()
         ram_total = mem.total
@@ -205,9 +205,9 @@ class SystemStats:
 
         return SystemSample(
             cpu_percent=cpu_percent,
-            gpu_percent=gpu_percent,
-            gpu_freq_mhz=gpu_freq_mhz,
-            gpu_power_mw=gpu_power_mw,
+            gpu_device_percent=gpu_device,
+            gpu_render_percent=gpu_render,
+            gpu_tiler_percent=gpu_tiler,
             ram_percent=ram_percent,
             ram_used=ram_used,
             ram_available=ram_available,
@@ -291,8 +291,9 @@ class MenuActionHandler(NSObject):
 class MetricStatusItem:
     """One metric shown as its own status item with vertical label/value."""
 
-    def __init__(self, label: str, handler: MenuActionHandler, action: str) -> None:
+    def __init__(self, label: str, handler: MenuActionHandler, action: str, value_color: str | None = None) -> None:
         self.label = label
+        self.value_color = value_color
         self.item = NSStatusBar.systemStatusBar().statusItemWithLength_(
             NSVariableStatusItemLength
         )
@@ -311,7 +312,7 @@ class MetricStatusItem:
     def update_value(self, value: str) -> None:
         if self.button is None:
             return
-        image = make_metric_image(self.label, value)
+        image = make_metric_image(self.label, value, self.value_color)
         self.button.setImage_(image)
         self.button.setToolTip_(f"{self.label}: {value}")
 
@@ -342,10 +343,10 @@ class MenuBarController:
         self.handler = MenuActionHandler.alloc().initWithController_(self.action_target)
 
         self.items = {
-            "cpu": MetricStatusItem("CPU", self.handler, "openCpu:"),
-            "gpu": MetricStatusItem("GPU", self.handler, "openGpu:"),
-            "ram": MetricStatusItem("RAM", self.handler, "openRam:"),
-            "disk": MetricStatusItem("DISK", self.handler, "openDisk:"),
+            "cpu": MetricStatusItem("CPU", self.handler, "openCpu:", "#ff5c5c"),
+            "gpu": MetricStatusItem("GPU", self.handler, "openGpu:", "#7d7bff"),
+            "ram": MetricStatusItem("RAM", self.handler, "openRam:", "#66d1ff"),
+            "disk": MetricStatusItem("SSD", self.handler, "openDisk:", "#ff5ccf"),
             "net": MetricStatusItem("NET", self.handler, "openNet:"),
         }
 
@@ -364,7 +365,10 @@ class MenuBarController:
         if show.get("cpu", True):
             self.items["cpu"].update_value(f"{sample.cpu_percent:.0f}%")
         if show.get("gpu", True):
-            gpu_text = f"{sample.gpu_percent:.0f}%" if sample.gpu_percent is not None else "N/A"
+            gpu_value = sample.gpu_device_percent
+            if gpu_value is None:
+                gpu_value = sample.gpu_render_percent
+            gpu_text = f"{gpu_value:.0f}%" if gpu_value is not None else "N/A"
             self.items["gpu"].update_value(gpu_text)
         if show.get("ram", True):
             self.items["ram"].update_value(f"{sample.ram_percent:.0f}%")
@@ -623,8 +627,8 @@ class GpuPage:
             ("cores", "Cores"),
             ("status", "Status"),
             ("util", "Utilization"),
-            ("freq", "Active frequency"),
-            ("power", "Power"),
+            ("render", "Render utilization"),
+            ("tiler", "Tiler utilization"),
         ]:
             value_label = QtWidgets.QLabel("--")
             value_label.setObjectName("detail-value")
@@ -634,11 +638,11 @@ class GpuPage:
 
         gauges = QtWidgets.QHBoxLayout()
         self.util_gauge = GaugeBox("Utilization", "#4aa3ff")
-        self.freq_gauge = GaugeBox("Frequency", "#7d7bff")
-        self.power_gauge = GaugeBox("Power", "#ffb74d")
+        self.render_gauge = GaugeBox("Render", "#7d7bff")
+        self.tiler_gauge = GaugeBox("Tiler", "#ffb74d")
         gauges.addWidget(self.util_gauge)
-        gauges.addWidget(self.freq_gauge)
-        gauges.addWidget(self.power_gauge)
+        gauges.addWidget(self.render_gauge)
+        gauges.addWidget(self.tiler_gauge)
         layout.addLayout(gauges)
 
         self.plot = pg.PlotWidget()
@@ -971,63 +975,54 @@ class DetailWindow(QtWidgets.QWidget):
                 gpu_page.detail_labels["model"].setText(info.get("model") or "--")
                 gpu_page.detail_labels["cores"].setText(str(info.get("cores")) if info.get("cores") else "--")
 
-                if sample.gpu_percent is None:
+                if sample.gpu_device_percent is None and sample.gpu_render_percent is None:
                     gpu_page.detail_labels["status"].setText("No GPU data")
                     gpu_page.detail_labels["util"].setText("N/A")
-                    gpu_page.detail_labels["freq"].setText("N/A")
-                    gpu_page.detail_labels["power"].setText("N/A")
+                    gpu_page.detail_labels["render"].setText("N/A")
+                    gpu_page.detail_labels["tiler"].setText("N/A")
                     gpu_page.util_gauge.gauge.set_value(None, None)
-                    gpu_page.freq_gauge.gauge.set_value(None, None)
-                    gpu_page.power_gauge.gauge.set_value(None, None)
+                    gpu_page.render_gauge.gauge.set_value(None, None)
+                    gpu_page.tiler_gauge.gauge.set_value(None, None)
                     self.history["gpu"] = (self.history["gpu"] + [0.0])[-len(self.history["gpu"]) :]
                     gpu_page.curve.setData(self.history["gpu"])
                 else:
                     gpu_page.detail_labels["status"].setText("Active")
-                    gpu_page.detail_labels["util"].setText(f"{sample.gpu_percent:.1f}%")
-                    gpu_page.util_gauge.gauge.set_value(sample.gpu_percent, f"{sample.gpu_percent:.0f}%")
+                    device = sample.gpu_device_percent
+                    render = sample.gpu_render_percent
+                    tiler = sample.gpu_tiler_percent
 
-                    if sample.gpu_freq_mhz is not None:
-                        gpu_page.freq_max_mhz = max(gpu_page.freq_max_mhz, sample.gpu_freq_mhz)
-                        freq_pct = (
-                            (sample.gpu_freq_mhz / gpu_page.freq_max_mhz) * 100.0
-                            if gpu_page.freq_max_mhz > 0
-                            else 0.0
-                        )
-                        gpu_page.detail_labels["freq"].setText(f"{sample.gpu_freq_mhz:.0f} MHz")
-                        gpu_page.freq_gauge.gauge.set_value(freq_pct, f"{sample.gpu_freq_mhz:.0f}")
+                    if device is not None:
+                        gpu_page.detail_labels["util"].setText(f"{device:.1f}%")
+                        gpu_page.util_gauge.gauge.set_value(device, f"{device:.0f}%")
+                        self.history["gpu"] = (self.history["gpu"] + [device])[-len(self.history["gpu"]) :]
+                        gpu_page.curve.setData(self.history["gpu"])
                     else:
-                        gpu_page.detail_labels["freq"].setText("N/A")
-                        gpu_page.freq_gauge.gauge.set_value(None, None)
+                        gpu_page.detail_labels["util"].setText("N/A")
+                        gpu_page.util_gauge.gauge.set_value(None, None)
 
-                    if sample.gpu_power_mw is not None:
-                        gpu_page.power_max_mw = max(gpu_page.power_max_mw, sample.gpu_power_mw)
-                        power_pct = (
-                            (sample.gpu_power_mw / gpu_page.power_max_mw) * 100.0
-                            if gpu_page.power_max_mw > 0
-                            else 0.0
-                        )
-                        if sample.gpu_power_mw >= 1000:
-                            power_text = f"{sample.gpu_power_mw/1000:.2f} W"
-                        else:
-                            power_text = f"{sample.gpu_power_mw:.0f} mW"
-                        gpu_page.detail_labels["power"].setText(power_text)
-                        gpu_page.power_gauge.gauge.set_value(power_pct, power_text.split()[0])
+                    if render is not None:
+                        gpu_page.detail_labels["render"].setText(f"{render:.1f}%")
+                        gpu_page.render_gauge.gauge.set_value(render, f"{render:.0f}%")
                     else:
-                        gpu_page.detail_labels["power"].setText("N/A")
-                        gpu_page.power_gauge.gauge.set_value(None, None)
+                        gpu_page.detail_labels["render"].setText("N/A")
+                        gpu_page.render_gauge.gauge.set_value(None, None)
 
-                    self.history["gpu"] = (self.history["gpu"] + [sample.gpu_percent])[-len(self.history["gpu"]) :]
-                    gpu_page.curve.setData(self.history["gpu"])
+                    if tiler is not None:
+                        gpu_page.detail_labels["tiler"].setText(f"{tiler:.1f}%")
+                        gpu_page.tiler_gauge.gauge.set_value(tiler, f"{tiler:.0f}%")
+                    else:
+                        gpu_page.detail_labels["tiler"].setText("N/A")
+                        gpu_page.tiler_gauge.gauge.set_value(None, None)
             else:
-                if sample.gpu_percent is None:
+                if sample.gpu_device_percent is None:
                     gpu_page.main_value.setText("N/A")
                     gpu_page.detail_labels["status"].setText("No GPU data")
                     self.history["gpu"] = (self.history["gpu"] + [0.0])[-len(self.history["gpu"]) :]
                     gpu_page.curve.setData(self.history["gpu"])
                 else:
-                    gpu_page.main_value.setText(f"{sample.gpu_percent:.0f}%")
+                    gpu_page.main_value.setText(f"{sample.gpu_device_percent:.0f}%")
                     gpu_page.detail_labels["status"].setText("OK")
-                    self.history["gpu"] = (self.history["gpu"] + [sample.gpu_percent])[-len(self.history["gpu"]) :]
+                    self.history["gpu"] = (self.history["gpu"] + [sample.gpu_device_percent])[-len(self.history["gpu"]) :]
                     gpu_page.curve.setData(self.history["gpu"])
         except Exception as exc:
             log_error("gpu_update", exc)
@@ -1242,7 +1237,7 @@ class SettingsWindow(QtWidgets.QWidget):
         brew = find_brew() is not None
         smartctl = find_smartctl() is not None
         smart_access = can_run_smartctl()
-        gpu_access = can_run_powermetrics()
+        gpu_access = can_read_gpu_ioreg()
 
         self._set_status(self.brew_status, brew)
         self._set_status(self.smartctl_status, smartctl)
@@ -1369,7 +1364,17 @@ class AppController(QtCore.QObject):
                 message,
             )
 
-def make_metric_image(label: str, value: str) -> NSImage:
+def _nscolor_from_hex(value: str) -> NSColor:
+    value = value.lstrip("#")
+    if len(value) != 6:
+        return NSColor.whiteColor()
+    r = int(value[0:2], 16) / 255.0
+    g = int(value[2:4], 16) / 255.0
+    b = int(value[4:6], 16) / 255.0
+    return NSColor.colorWithCalibratedRed_green_blue_alpha_(r, g, b, 1.0)
+
+
+def make_metric_image(label: str, value: str, value_color: str | None = None) -> NSImage:
     """Render vertical label (small) + value (large) into an NSImage."""
     bar_height = NSStatusBar.systemStatusBar().thickness()
     label_font = NSFont.systemFontOfSize_(8.0)
@@ -1379,9 +1384,10 @@ def make_metric_image(label: str, value: str) -> NSImage:
         NSFontAttributeName: label_font,
         NSForegroundColorAttributeName: NSColor.colorWithCalibratedWhite_alpha_(0.7, 1.0),
     }
+    value_nscolor = _nscolor_from_hex(value_color) if value_color else NSColor.whiteColor()
     value_attr = {
         NSFontAttributeName: value_font,
-        NSForegroundColorAttributeName: NSColor.whiteColor(),
+        NSForegroundColorAttributeName: value_nscolor,
     }
 
     label_str = NSAttributedString.alloc().initWithString_attributes_(label, label_attr)
@@ -2008,6 +2014,55 @@ def read_gpu_metrics_powermetrics() -> dict:
 def read_gpu_usage_powermetrics() -> float | None:
     """Return GPU active residency % via powermetrics (Apple Silicon)."""
     return read_gpu_metrics_powermetrics().get("percent")
+
+
+def read_gpu_perfstats_ioreg() -> dict:
+    """Read GPU utilization stats from IORegistry (Apple Silicon)."""
+    try:
+        result = subprocess.run(
+            ["/usr/sbin/ioreg", "-l", "-w", "0", "-r", "-c", "IOAccelerator"],
+            capture_output=True,
+            text=True,
+            timeout=2,
+        )
+        if result.returncode != 0:
+            return {"device": None, "render": None, "tiler": None}
+        text = result.stdout or ""
+        device = None
+        render = None
+        tiler = None
+        match = re.search(r'"Device Utilization %"\s*=\s*([0-9.]+)', text)
+        if match:
+            device = float(match.group(1))
+        match = re.search(r'"Renderer Utilization %"\s*=\s*([0-9.]+)', text)
+        if match:
+            render = float(match.group(1))
+        match = re.search(r'"Tiler Utilization %"\s*=\s*([0-9.]+)', text)
+        if match:
+            tiler = float(match.group(1))
+        # Some systems report "GPU Utilization %"
+        if device is None:
+            match = re.search(r'"GPU Utilization %"\s*=\s*([0-9.]+)', text)
+            if match:
+                device = float(match.group(1))
+        return {"device": device, "render": render, "tiler": tiler}
+    except Exception:
+        return {"device": None, "render": None, "tiler": None}
+
+
+def read_gpu_metrics() -> dict:
+    """Return GPU utilization metrics (device/render/tiler)."""
+    stats = read_gpu_perfstats_ioreg()
+    return {
+        "device": stats.get("device"),
+        "render": stats.get("render"),
+        "tiler": stats.get("tiler"),
+    }
+
+
+def can_read_gpu_ioreg() -> bool:
+    stats = read_gpu_perfstats_ioreg()
+    return any(value is not None for value in stats.values())
 
 
 def find_smartctl() -> str | None:
