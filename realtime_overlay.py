@@ -19,6 +19,7 @@ import re
 import getpass
 import sys
 import time
+from collections import OrderedDict
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict
@@ -244,6 +245,14 @@ class MetricsHub(QtCore.QObject):
     def is_active(self) -> bool:
         return self.timer.isActive()
 
+    def set_interval(self, interval_ms: int) -> None:
+        interval_ms = max(100, int(interval_ms))
+        self.timer.setInterval(interval_ms)
+        if not self.timer.isActive():
+            self.timer.start(interval_ms)
+        # Force an immediate refresh so UI reflects new interval right away.
+        self._tick()
+
 
 class LiveGuard(QtCore.QObject):
     """Ensures the hub keeps ticking when windows are shown."""
@@ -377,28 +386,29 @@ class MenuBarController:
         self.items["net"].set_visible(show.get("net", True))
 
     def update_from_sample(self, sample: SystemSample) -> None:
-        show = self.config.data["show"]
-        if show.get("cpu", True):
-            self.items["cpu"].update_value(f"{sample.cpu_percent:.0f}%")
-        if show.get("gpu", True):
-            gpu_value = sample.gpu_device_percent
-            if gpu_value is None:
-                gpu_value = sample.gpu_render_percent
-            gpu_text = f"{gpu_value:.0f}%" if gpu_value is not None else "N/A"
-            self.items["gpu"].update_value(gpu_text)
-        if show.get("ram", True):
-            self.items["ram"].update_value(f"{sample.ram_percent:.0f}%")
-        if show.get("disk", True):
-            try:
-                _, _, percent = get_disk_usage_info()
-                self.items["disk"].update_value(f"{percent:.0f}%")
-            except Exception:
-                value = f"{format_rate_short(sample.disk_read_bps)}/{format_rate_short(sample.disk_write_bps)}"
-                self.items["disk"].update_value(value)
-        if show.get("net", True):
-            up_value = format_rate_short(sample.net_up_bps)
-            down_value = format_rate_short(sample.net_down_bps)
-            self.items["net"].update_net(up_value, down_value)
+        with objc.autorelease_pool():
+            show = self.config.data["show"]
+            if show.get("cpu", True):
+                self.items["cpu"].update_value(f"{sample.cpu_percent:.0f}%")
+            if show.get("gpu", True):
+                gpu_value = sample.gpu_device_percent
+                if gpu_value is None:
+                    gpu_value = sample.gpu_render_percent
+                gpu_text = f"{gpu_value:.0f}%" if gpu_value is not None else "N/A"
+                self.items["gpu"].update_value(gpu_text)
+            if show.get("ram", True):
+                self.items["ram"].update_value(f"{sample.ram_percent:.0f}%")
+            if show.get("disk", True):
+                try:
+                    _, _, percent = get_disk_usage_info()
+                    self.items["disk"].update_value(f"{percent:.0f}%")
+                except Exception:
+                    value = f"{format_rate_short(sample.disk_read_bps)}/{format_rate_short(sample.disk_write_bps)}"
+                    self.items["disk"].update_value(value)
+            if show.get("net", True):
+                up_value = format_rate_short(sample.net_up_bps)
+                down_value = format_rate_short(sample.net_down_bps)
+                self.items["net"].update_net(up_value, down_value)
 
     def get_anchor(self, metric_key: str):
         item = self.items.get(metric_key)
@@ -1203,13 +1213,30 @@ class DetailWindow(QtWidgets.QWidget):
         if hasattr(net_page, "plot_up"):
             net_page.plot_up.repaint()
 
+    def update_history(self, sample: SystemSample) -> None:
+        self.history["cpu"] = (self.history["cpu"] + [sample.cpu_percent])[-len(self.history["cpu"]) :]
+        self.history["ram"] = (self.history["ram"] + [sample.ram_percent])[-len(self.history["ram"]) :]
+        read_mb = sample.disk_read_bps / 1024 / 1024
+        write_mb = sample.disk_write_bps / 1024 / 1024
+        self.history["disk_read"] = (self.history["disk_read"] + [read_mb])[-len(self.history["disk_read"]) :]
+        self.history["disk_write"] = (self.history["disk_write"] + [write_mb])[-len(self.history["disk_write"]) :]
+        net_down = max(0.0, sample.net_down_bps / 1024)
+        net_up = max(0.0, sample.net_up_bps / 1024)
+        self.history["net"] = (self.history["net"] + [net_down + net_up])[-len(self.history["net"]) :]
+        self.history["net_down"] = (self.history["net_down"] + [net_down])[-len(self.history["net_down"]) :]
+        self.history["net_up"] = (self.history["net_up"] + [net_up])[-len(self.history["net_up"]) :]
+        gpu_value = sample.gpu_device_percent
+        if gpu_value is None:
+            gpu_value = sample.gpu_render_percent
+        gpu_value = gpu_value or 0.0
+        self.history["gpu"] = (self.history["gpu"] + [gpu_value])[-len(self.history["gpu"]) :]
+
     def update_from_sample(self, sample: SystemSample) -> None:
         current = self.stack.currentWidget()
         try:
             cpu_page = self.pages["cpu"]
             if current == cpu_page.widget:
                 cpu_page.main_value.setText(f"{sample.cpu_percent:.0f}%")
-                self.history["cpu"] = (self.history["cpu"] + [sample.cpu_percent])[-len(self.history["cpu"]) :]
                 cpu_page.curve.setData(self.history["cpu"])
 
                 try:
@@ -1249,7 +1276,6 @@ class DetailWindow(QtWidgets.QWidget):
             ram_page = self.pages["ram"]
             if current == ram_page.widget:
                 ram_page.main_value.setText(f"{sample.ram_percent:.0f}%")
-                self.history["ram"] = (self.history["ram"] + [sample.ram_percent])[-len(self.history["ram"]) :]
                 ram_page.curve.setData(self.history["ram"])
                 ram_page.detail_labels["used"].setText(format_bytes(sample.ram_used))
                 ram_page.detail_labels["available"].setText(format_bytes(sample.ram_available))
@@ -1295,8 +1321,6 @@ class DetailWindow(QtWidgets.QWidget):
                 disk_page.read_label.setText(f"{read_mb:.1f} MB/s")
                 disk_page.write_label.setText(f"{write_mb:.1f} MB/s")
 
-                self.history["disk_read"] = (self.history["disk_read"] + [read_mb])[-len(self.history["disk_read"]) :]
-                self.history["disk_write"] = (self.history["disk_write"] + [write_mb])[-len(self.history["disk_write"]) :]
                 disk_page.read_curve.setData(self.history["disk_read"])
                 disk_page.write_curve.setData(self.history["disk_write"])
 
@@ -1340,9 +1364,6 @@ class DetailWindow(QtWidgets.QWidget):
                 )
                 net_down = max(0.0, sample.net_down_bps / 1024)
                 net_up = max(0.0, sample.net_up_bps / 1024)
-                self.history["net"] = (self.history["net"] + [net_down + net_up])[-len(self.history["net"]) :]
-                self.history["net_down"] = (self.history["net_down"] + [net_down])[-len(self.history["net_down"]) :]
-                self.history["net_up"] = (self.history["net_up"] + [net_up])[-len(self.history["net_up"]) :]
                 if hasattr(net_page, "curve_down") and hasattr(net_page, "curve_up"):
                     if hasattr(net_page, "plot_down"):
                         down_max = max(1.0, max(self.history["net_down"]) * 1.2)
@@ -1383,7 +1404,6 @@ class DetailWindow(QtWidgets.QWidget):
                     gpu_page.util_gauge.gauge.set_value(None, None)
                     gpu_page.render_gauge.gauge.set_value(None, None)
                     gpu_page.tiler_gauge.gauge.set_value(None, None)
-                    self.history["gpu"] = (self.history["gpu"] + [0.0])[-len(self.history["gpu"]) :]
                     gpu_page.curve.setData(self.history["gpu"])
                 else:
                     gpu_page.detail_labels["status"].setText("Active")
@@ -1394,7 +1414,6 @@ class DetailWindow(QtWidgets.QWidget):
                     if device is not None:
                         gpu_page.detail_labels["util"].setText(f"{device:.1f}%")
                         gpu_page.util_gauge.gauge.set_value(device, f"{device:.0f}%")
-                        self.history["gpu"] = (self.history["gpu"] + [device])[-len(self.history["gpu"]) :]
                         gpu_page.curve.setData(self.history["gpu"])
                     else:
                         gpu_page.detail_labels["util"].setText("N/A")
@@ -1417,12 +1436,10 @@ class DetailWindow(QtWidgets.QWidget):
                 if sample.gpu_device_percent is None:
                     gpu_page.main_value.setText("N/A")
                     gpu_page.detail_labels["status"].setText("No GPU data")
-                    self.history["gpu"] = (self.history["gpu"] + [0.0])[-len(self.history["gpu"]) :]
                     gpu_page.curve.setData(self.history["gpu"])
                 else:
                     gpu_page.main_value.setText(f"{sample.gpu_device_percent:.0f}%")
                     gpu_page.detail_labels["status"].setText("OK")
-                    self.history["gpu"] = (self.history["gpu"] + [sample.gpu_device_percent])[-len(self.history["gpu"]) :]
                     gpu_page.curve.setData(self.history["gpu"])
         except Exception as exc:
             log_error("gpu_update", exc)
@@ -1501,26 +1518,6 @@ class SettingsWindow(QtWidgets.QWidget):
         metrics_layout.addWidget(self.net_check)
 
         layout.addWidget(metrics_group)
-
-        chart_group = QtWidgets.QGroupBox("Live Chart")
-        chart_layout = QtWidgets.QVBoxLayout(chart_group)
-
-        self.chart_check = QtWidgets.QCheckBox("Show CPU chart")
-        self.chart_check.setChecked(self.config.data["show"].get("chart", True))
-        chart_layout.addWidget(self.chart_check)
-
-        self.plot = pg.PlotWidget()
-        self.plot.setBackground((0, 0, 0))
-        self.plot.setYRange(0, 100)
-        self.plot.showGrid(x=True, y=True, alpha=0.2)
-        self.plot.setMouseEnabled(x=False, y=False)
-        self.plot.hideButtons()
-        self.plot.setMenuEnabled(False)
-        self.cpu_curve = self.plot.plot(pen=pg.mkPen(color="#ff6b6b", width=2))
-        style_plot(self.plot)
-        chart_layout.addWidget(self.plot)
-
-        layout.addWidget(chart_group)
 
         status_group = QtWidgets.QGroupBox("Status")
         status_layout = QtWidgets.QFormLayout(status_group)
@@ -1618,19 +1615,11 @@ class SettingsWindow(QtWidgets.QWidget):
             """
         )
 
-        self._apply_chart_visibility()
-        self.chart_check.toggled.connect(self._apply_chart_visibility)
         self.update_status_labels()
 
 
-    def _apply_chart_visibility(self) -> None:
-        self.plot.setVisible(self.chart_check.isChecked())
-
     def update_from_sample(self, sample: SystemSample) -> None:
-        if not self.chart_check.isChecked():
-            return
-        self.cpu_history = (self.cpu_history + [sample.cpu_percent])[-len(self.cpu_history) :]
-        self.cpu_curve.setData(self.cpu_history)
+        return
 
     def apply(self) -> None:
         self.config.data["show"]["cpu"] = self.cpu_check.isChecked()
@@ -1638,7 +1627,7 @@ class SettingsWindow(QtWidgets.QWidget):
         self.config.data["show"]["ram"] = self.ram_check.isChecked()
         self.config.data["show"]["disk"] = self.disk_check.isChecked()
         self.config.data["show"]["net"] = self.net_check.isChecked()
-        self.config.data["show"]["chart"] = self.chart_check.isChecked()
+        self.config.data["show"]["chart"] = False
         self.config.data["start_at_login"] = self.startup_check.isChecked()
         self.config.data["hide_dock"] = self.hide_dock_check.isChecked()
         interval_ms = None
@@ -2184,6 +2173,7 @@ class AppController(QtCore.QObject):
     def _on_sample(self, sample: SystemSample) -> None:
         self.last_sample = sample
         self.menu_bar.update_from_sample(sample)
+        self.detail_window.update_history(sample)
         if self.detail_window.isVisible():
             self.detail_window.update_from_sample(sample)
         if self.dashboard is not None and self.dashboard.isVisible():
@@ -2248,6 +2238,10 @@ def _nscolor_from_hex(value: str) -> NSColor:
 
 def make_metric_image(label: str, value: str, value_color: str | None = None) -> NSImage:
     """Render vertical label (small) + value (large) into an NSImage."""
+    cache_key = (label, value, value_color)
+    cached = _get_cached_metric_image(cache_key)
+    if cached is not None:
+        return cached
     bar_height = NSStatusBar.systemStatusBar().thickness()
     label_font = NSFont.systemFontOfSize_(8.0)
     value_font = NSFont.monospacedDigitSystemFontOfSize_weight_(11.0, 0.3)
@@ -2283,11 +2277,16 @@ def make_metric_image(label: str, value: str, value_color: str | None = None) ->
     value_str.drawAtPoint_((value_x, value_y))
 
     image.unlockFocus()
+    _store_metric_image(cache_key, image)
     return image
 
 
 def make_net_image(up_value: str, down_value: str) -> NSImage:
     """Render upload/download arrows + values for the menu bar."""
+    cache_key = (up_value, down_value)
+    cached = _get_cached_net_image(cache_key)
+    if cached is not None:
+        return cached
     bar_height = NSStatusBar.systemStatusBar().thickness()
     line_font = NSFont.monospacedDigitSystemFontOfSize_weight_(9.0, 0.2)
 
@@ -2321,6 +2320,7 @@ def make_net_image(up_value: str, down_value: str) -> NSImage:
     down_str.drawAtPoint_((down_x, down_y))
 
     image.unlockFocus()
+    _store_net_image(cache_key, image)
     return image
 
 
@@ -2425,7 +2425,64 @@ def log_error(context: str, exc: Exception) -> None:
         pass
 
 
-_APP_ICON_CACHE: dict[str, QtGui.QPixmap | None] = {}
+_APP_ICON_CACHE: "OrderedDict[str, tuple[float, QtGui.QPixmap | None]]" = OrderedDict()
+_APP_ICON_CACHE_MAX = 200
+_APP_ICON_CACHE_TTL = 3 * 60
+
+_METRIC_IMAGE_CACHE: "OrderedDict[tuple[str, str, str | None], NSImage]" = OrderedDict()
+_NET_IMAGE_CACHE: "OrderedDict[tuple[str, str], NSImage]" = OrderedDict()
+_METRIC_IMAGE_CACHE_MAX = 300
+_NET_IMAGE_CACHE_MAX = 300
+
+
+def _get_cached_icon(app_path: str) -> QtGui.QPixmap | None:
+    now = time.time()
+    entry = _APP_ICON_CACHE.get(app_path)
+    if entry is None:
+        return None
+    ts, pixmap = entry
+    if now - ts > _APP_ICON_CACHE_TTL:
+        _APP_ICON_CACHE.pop(app_path, None)
+        return None
+    _APP_ICON_CACHE.move_to_end(app_path)
+    return pixmap
+
+
+def _store_cached_icon(app_path: str, pixmap: QtGui.QPixmap | None) -> None:
+    _APP_ICON_CACHE[app_path] = (time.time(), pixmap)
+    _APP_ICON_CACHE.move_to_end(app_path)
+    while len(_APP_ICON_CACHE) > _APP_ICON_CACHE_MAX:
+        _APP_ICON_CACHE.popitem(last=False)
+
+
+def _get_cached_metric_image(key: tuple[str, str, str | None]) -> NSImage | None:
+    image = _METRIC_IMAGE_CACHE.get(key)
+    if image is None:
+        return None
+    _METRIC_IMAGE_CACHE.move_to_end(key)
+    return image
+
+
+def _store_metric_image(key: tuple[str, str, str | None], image: NSImage) -> None:
+    _METRIC_IMAGE_CACHE[key] = image
+    _METRIC_IMAGE_CACHE.move_to_end(key)
+    while len(_METRIC_IMAGE_CACHE) > _METRIC_IMAGE_CACHE_MAX:
+        _METRIC_IMAGE_CACHE.popitem(last=False)
+
+
+def _get_cached_net_image(key: tuple[str, str]) -> NSImage | None:
+    image = _NET_IMAGE_CACHE.get(key)
+    if image is None:
+        return None
+    _NET_IMAGE_CACHE.move_to_end(key)
+    return image
+
+
+def _store_net_image(key: tuple[str, str], image: NSImage) -> None:
+    _NET_IMAGE_CACHE[key] = image
+    _NET_IMAGE_CACHE.move_to_end(key)
+    while len(_NET_IMAGE_CACHE) > _NET_IMAGE_CACHE_MAX:
+        _NET_IMAGE_CACHE.popitem(last=False)
 
 
 def _nsimage_to_pixmap(image: NSImage, size: int = 16) -> QtGui.QPixmap | None:
@@ -2464,17 +2521,18 @@ def get_app_icon_for_pid(pid: int, fallback_name: str | None = None) -> QtGui.QP
     if not app_path:
         return None
 
-    if app_path in _APP_ICON_CACHE:
-        return _APP_ICON_CACHE[app_path]
+    cached = _get_cached_icon(app_path)
+    if cached is not None or app_path in _APP_ICON_CACHE:
+        return cached
 
     try:
         icon = NSWorkspace.sharedWorkspace().iconForFile_(app_path)
         pixmap = _nsimage_to_pixmap(icon, 16) if icon is not None else None
-        _APP_ICON_CACHE[app_path] = pixmap
+        _store_cached_icon(app_path, pixmap)
         return pixmap
     except Exception as exc:
         log_error("app_icon", exc)
-        _APP_ICON_CACHE[app_path] = None
+        _store_cached_icon(app_path, None)
         return None
 
 
@@ -3534,6 +3592,7 @@ def main() -> None:
         raise SystemExit("This build is for Apple Silicon (arm64) only.")
 
     app = QtWidgets.QApplication(sys.argv)
+    QtGui.QPixmapCache.setCacheLimit(10240)
     app.setQuitOnLastWindowClosed(False)
     controller = AppController()
     sys.exit(app.exec())
