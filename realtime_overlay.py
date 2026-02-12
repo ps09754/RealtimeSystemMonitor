@@ -83,6 +83,10 @@ DEFAULT_CONFIG = {
         "net": True,
         "chart": True,
     },
+    "top_lists": {
+        "cpu": False,
+        "ram": False,
+    },
 }
 
 
@@ -904,15 +908,9 @@ class DetailWindow(QtWidgets.QWidget):
         header.addStretch(1)
 
         settings_btn = QtWidgets.QPushButton("Settings")
-        close_btn = QtWidgets.QPushButton("Close")
-        quit_btn = QtWidgets.QPushButton("Quit")
         header.addWidget(settings_btn)
-        header.addWidget(close_btn)
-        header.addWidget(quit_btn)
 
         settings_btn.clicked.connect(self.on_open_settings)
-        close_btn.clicked.connect(self.hide)
-        quit_btn.clicked.connect(self.on_quit)
 
         panel_layout.addLayout(header)
 
@@ -1038,6 +1036,12 @@ class DetailWindow(QtWidgets.QWidget):
             row.setVisible(False)
             ram_page.top_labels.append((row, icon_label, name_label, value_label))
         ram_page.widget.layout().addWidget(ram_top)
+
+        top_cfg = self.config.data.get("top_lists", {})
+        cpu_top.setVisible(bool(top_cfg.get("cpu", False)))
+        ram_top.setVisible(bool(top_cfg.get("ram", False)))
+        cpu_page.top_box = cpu_top
+        ram_page.top_box = ram_top
 
         if hasattr(ram_page, "details_layout"):
             ram_page.details_layout.setContentsMargins(8, 6, 8, 6)
@@ -1168,6 +1172,17 @@ class DetailWindow(QtWidgets.QWidget):
         if page is not None:
             self._schedule_resize(page)
 
+    def set_top_list_visibility(self, cpu: bool, ram: bool) -> None:
+        cpu_page = self.pages.get("cpu")
+        ram_page = self.pages.get("ram")
+        if cpu_page and hasattr(cpu_page, "top_box"):
+            cpu_page.top_box.setVisible(cpu)
+        if ram_page and hasattr(ram_page, "top_box"):
+            ram_page.top_box.setVisible(ram)
+        current = self.stack.currentWidget()
+        if current is not None:
+            self._schedule_resize(current)
+
     def showEvent(self, event: QtGui.QShowEvent) -> None:
         super().showEvent(event)
         page = self.stack.currentWidget()
@@ -1249,26 +1264,27 @@ class DetailWindow(QtWidgets.QWidget):
                 cpu_page.detail_labels["cores"].setText(str(psutil.cpu_count(logical=True)))
                 uptime_seconds = int(time.time() - psutil.boot_time())
                 cpu_page.detail_labels["uptime"].setText(format_uptime(uptime_seconds))
-                if hasattr(cpu_page, "top_labels"):
-                    now = time.time()
-                    interval_s = max(0.5, float(self.config.data.get("update_ms", 1000)) / 1000.0)
-                    if now - self._list_last["cpu"] >= interval_s:
-                        self._list_last["cpu"] = now
-                        top = get_top_cpu_processes(10)
-                        for idx, pair in enumerate(cpu_page.top_labels):
-                            row, icon_label, name_label, value_label = pair
-                            if idx < len(top):
-                                name, cpu, pid = top[idx]
-                                name_label.setText(name)
-                                value_label.setText(f"{cpu:.1f}%")
-                                icon = get_app_icon_for_pid(pid, name)
-                                if icon is not None:
-                                    icon_label.setPixmap(icon)
+                if hasattr(cpu_page, "top_labels") and hasattr(cpu_page, "top_box"):
+                    if cpu_page.top_box.isVisible():
+                        now = time.time()
+                        interval_s = max(0.5, float(self.config.data.get("update_ms", 1000)) / 1000.0)
+                        if now - self._list_last["cpu"] >= interval_s:
+                            self._list_last["cpu"] = now
+                            top = get_top_cpu_processes(10)
+                            for idx, pair in enumerate(cpu_page.top_labels):
+                                row, icon_label, name_label, value_label = pair
+                                if idx < len(top):
+                                    name, cpu, pid = top[idx]
+                                    name_label.setText(name)
+                                    value_label.setText(f"{cpu:.1f}%")
+                                    icon = get_app_icon_for_pid(pid, name)
+                                    if icon is not None:
+                                        icon_label.setPixmap(icon)
+                                    else:
+                                        icon_label.clear()
+                                    row.setVisible(True)
                                 else:
-                                    icon_label.clear()
-                                row.setVisible(True)
-                            else:
-                                row.setVisible(False)
+                                    row.setVisible(False)
         except Exception as exc:
             log_error("cpu_update", exc)
 
@@ -1282,26 +1298,27 @@ class DetailWindow(QtWidgets.QWidget):
                 ram_page.detail_labels["total"].setText(format_bytes(sample.ram_total))
                 swap = psutil.swap_memory()
                 ram_page.detail_labels["swap"].setText(format_bytes(swap.used))
-                if hasattr(ram_page, "top_labels"):
-                    now = time.time()
-                    interval_s = max(0.5, float(self.config.data.get("update_ms", 1000)) / 1000.0)
-                    if now - self._list_last["ram"] >= interval_s:
-                        self._list_last["ram"] = now
-                        top = get_top_ram_processes(10)
-                        for idx, pair in enumerate(ram_page.top_labels):
-                            row, icon_label, name_label, value_label = pair
-                            if idx < len(top):
-                                name, rss, pid = top[idx]
-                                name_label.setText(name)
-                                value_label.setText(format_bytes(rss))
-                                icon = get_app_icon_for_pid(pid, name)
-                                if icon is not None:
-                                    icon_label.setPixmap(icon)
+                if hasattr(ram_page, "top_labels") and hasattr(ram_page, "top_box"):
+                    if ram_page.top_box.isVisible():
+                        now = time.time()
+                        interval_s = max(0.5, float(self.config.data.get("update_ms", 1000)) / 1000.0)
+                        if now - self._list_last["ram"] >= interval_s:
+                            self._list_last["ram"] = now
+                            top = get_top_ram_processes(10)
+                            for idx, pair in enumerate(ram_page.top_labels):
+                                row, icon_label, name_label, value_label = pair
+                                if idx < len(top):
+                                    name, rss, pid = top[idx]
+                                    name_label.setText(name)
+                                    value_label.setText(format_bytes_decimal(rss))
+                                    icon = get_app_icon_for_pid(pid, name)
+                                    if icon is not None:
+                                        icon_label.setPixmap(icon)
+                                    else:
+                                        icon_label.clear()
+                                    row.setVisible(True)
                                 else:
-                                    icon_label.clear()
-                                row.setVisible(True)
-                            else:
-                                row.setVisible(False)
+                                    row.setVisible(False)
         except Exception as exc:
             log_error("ram_update", exc)
 
@@ -1450,6 +1467,12 @@ class DetailWindow(QtWidgets.QWidget):
     def mouseMoveEvent(self, event: QtGui.QMouseEvent) -> None:
         event.ignore()
 
+    def keyPressEvent(self, event: QtGui.QKeyEvent) -> None:
+        if event.key() == QtCore.Qt.Key.Key_Escape:
+            self.hide()
+            return
+        super().keyPressEvent(event)
+
     def position_below_anchor(self, anchor: Dict) -> None:
         """Position panel directly under the clicked menu bar item."""
         qt_x = anchor["x"]
@@ -1529,6 +1552,7 @@ class SettingsWindow(QtWidgets.QWidget):
         status_layout.addRow("smartctl", self.smartctl_status)
         status_layout.addRow("SMART access", self.smart_status)
         status_layout.addRow("GPU access", self.gpu_status)
+        status_group.setVisible(False)
         layout.addWidget(status_group)
 
         app_group = QtWidgets.QGroupBox("App Options")
@@ -1540,6 +1564,17 @@ class SettingsWindow(QtWidgets.QWidget):
         app_layout.addWidget(self.startup_check)
         app_layout.addWidget(self.hide_dock_check)
         layout.addWidget(app_group)
+
+        list_group = QtWidgets.QGroupBox("Top App Lists")
+        list_layout = QtWidgets.QVBoxLayout(list_group)
+        self.top_cpu_check = QtWidgets.QCheckBox("Show Top CPU Apps")
+        self.top_ram_check = QtWidgets.QCheckBox("Show Top RAM Apps")
+        top_cfg = self.config.data.get("top_lists", {})
+        self.top_cpu_check.setChecked(top_cfg.get("cpu", False))
+        self.top_ram_check.setChecked(top_cfg.get("ram", False))
+        list_layout.addWidget(self.top_cpu_check)
+        list_layout.addWidget(self.top_ram_check)
+        layout.addWidget(list_group)
 
         interval_group = QtWidgets.QGroupBox("Update speed")
         interval_layout = QtWidgets.QVBoxLayout(interval_group)
@@ -1563,21 +1598,24 @@ class SettingsWindow(QtWidgets.QWidget):
 
         buttons = QtWidgets.QHBoxLayout()
         enable_btn = QtWidgets.QPushButton("Enable GPU/SMART")
+        enable_btn.setVisible(False)
         dashboard_btn = QtWidgets.QPushButton("Open Dashboard")
-        apply_btn = QtWidgets.QPushButton("Apply")
+        self.apply_btn = QtWidgets.QPushButton("Apply")
+        self.apply_btn.setObjectName("apply-btn")
         quit_btn = QtWidgets.QPushButton("Quit")
+        quit_btn.setStyleSheet("background: #ff5c5c; border: 1px solid #ff6b6b; color: #0b0b0b;")
         close_btn = QtWidgets.QPushButton("Close")
         buttons.addWidget(enable_btn)
         buttons.addWidget(dashboard_btn)
-        buttons.addWidget(apply_btn)
+        buttons.addWidget(self.apply_btn)
         buttons.addWidget(quit_btn)
         buttons.addWidget(close_btn)
         layout.addLayout(buttons)
 
         enable_btn.clicked.connect(self.on_enable_priv)
         dashboard_btn.clicked.connect(self.on_open_dashboard)
-        apply_btn.clicked.connect(self.apply)
-        quit_btn.clicked.connect(self.on_quit)
+        self.apply_btn.clicked.connect(self.apply)
+        quit_btn.clicked.connect(self._confirm_quit)
         close_btn.clicked.connect(self.close)
 
         self.setStyleSheet(
@@ -1615,8 +1653,72 @@ class SettingsWindow(QtWidgets.QWidget):
             """
         )
 
+        self._capture_initial_state()
+        self._update_apply_state()
+        self._wire_dirty_signals()
         self.update_status_labels()
 
+
+    def _capture_initial_state(self) -> None:
+        self._initial_state = self._current_state()
+
+    def _current_state(self) -> dict:
+        interval_ms = None
+        for btn in self.interval_buttons.values():
+            if btn.isChecked():
+                interval_ms = btn.property("interval_ms")
+                break
+        return {
+            "cpu": self.cpu_check.isChecked(),
+            "gpu": self.gpu_check.isChecked(),
+            "ram": self.ram_check.isChecked(),
+            "disk": self.disk_check.isChecked(),
+            "net": self.net_check.isChecked(),
+            "start_at_login": self.startup_check.isChecked(),
+            "hide_dock": self.hide_dock_check.isChecked(),
+            "top_cpu": self.top_cpu_check.isChecked(),
+            "top_ram": self.top_ram_check.isChecked(),
+            "interval_ms": int(interval_ms) if interval_ms else 1000,
+        }
+
+    def _wire_dirty_signals(self) -> None:
+        widgets = [
+            self.cpu_check,
+            self.gpu_check,
+            self.ram_check,
+            self.disk_check,
+            self.net_check,
+            self.startup_check,
+            self.hide_dock_check,
+            self.top_cpu_check,
+            self.top_ram_check,
+        ]
+        for widget in widgets:
+            widget.toggled.connect(self._update_apply_state)
+        for btn in self.interval_buttons.values():
+            btn.toggled.connect(self._update_apply_state)
+
+    def _update_apply_state(self) -> None:
+        dirty = self._current_state() != getattr(self, "_initial_state", {})
+        self.apply_btn.setEnabled(dirty)
+        if dirty:
+            self.apply_btn.setStyleSheet(
+                "background: #4fd17b; border: 1px solid #5fe18b; color: #0b0b0b;"
+            )
+        else:
+            self.apply_btn.setStyleSheet(
+                "background: #3a3a3a; border: 1px solid #4a4a4a; color: #9aa0a6;"
+            )
+
+    def _confirm_quit(self) -> None:
+        result = QtWidgets.QMessageBox.question(
+            self,
+            "Quit",
+            "Do you want to quit Realtime System Monitor?",
+            QtWidgets.QMessageBox.StandardButton.Yes | QtWidgets.QMessageBox.StandardButton.No,
+        )
+        if result == QtWidgets.QMessageBox.StandardButton.Yes:
+            self.on_quit()
 
     def update_from_sample(self, sample: SystemSample) -> None:
         return
@@ -1630,6 +1732,10 @@ class SettingsWindow(QtWidgets.QWidget):
         self.config.data["show"]["chart"] = False
         self.config.data["start_at_login"] = self.startup_check.isChecked()
         self.config.data["hide_dock"] = self.hide_dock_check.isChecked()
+        if "top_lists" not in self.config.data:
+            self.config.data["top_lists"] = {}
+        self.config.data["top_lists"]["cpu"] = self.top_cpu_check.isChecked()
+        self.config.data["top_lists"]["ram"] = self.top_ram_check.isChecked()
         interval_ms = None
         for btn in self.interval_buttons.values():
             if btn.isChecked():
@@ -1637,6 +1743,8 @@ class SettingsWindow(QtWidgets.QWidget):
                 break
         self.config.data["update_ms"] = int(interval_ms) if interval_ms else 1000
         self.config.save()
+        self._capture_initial_state()
+        self._update_apply_state()
         self.on_apply()
 
     def update_status_labels(self) -> None:
@@ -1746,6 +1854,10 @@ class DashboardWindow(QtWidgets.QWidget):
         )
         left_content_layout.addWidget(self.ram_list_box)
         left_content_layout.addStretch(1)
+
+        top_cfg = self.config.data.get("top_lists", {})
+        self.cpu_list_box.setVisible(bool(top_cfg.get("cpu", False)))
+        self.ram_list_box.setVisible(bool(top_cfg.get("ram", False)))
 
         # Disk
         self.disk_box, self.disk_layout = self._make_section("Disk")
@@ -2066,14 +2178,14 @@ class DashboardWindow(QtWidgets.QWidget):
 
             now = time.time()
             interval_s = max(0.5, float(self.config.data.get("update_ms", 1000)) / 1000.0)
-            if now - self._list_last["cpu"] >= interval_s:
+            if self.cpu_list_box.isVisible() and now - self._list_last["cpu"] >= interval_s:
                 self._list_last["cpu"] = now
                 cpu_top = get_top_cpu_processes(10)
                 self._update_list(self.cpu_list_rows, cpu_top, lambda v: f"{v:.1f}%")
-            if now - self._list_last["ram"] >= interval_s:
+            if self.ram_list_box.isVisible() and now - self._list_last["ram"] >= interval_s:
                 self._list_last["ram"] = now
                 ram_top = get_top_ram_processes(10)
-                self._update_list(self.ram_list_rows, ram_top, format_bytes)
+                self._update_list(self.ram_list_rows, ram_top, format_bytes_decimal)
         except Exception as exc:
             log_error("dashboard_update", exc)
 
@@ -2143,6 +2255,16 @@ class AppController(QtCore.QObject):
     def apply_settings(self) -> None:
         self.hub.set_interval(self.config.data["update_ms"])
         self.menu_bar.refresh_visibility()
+        top_cfg = self.config.data.get("top_lists", {})
+        self.detail_window.set_top_list_visibility(
+            bool(top_cfg.get("cpu", False)),
+            bool(top_cfg.get("ram", False)),
+        )
+        if self.dashboard is not None:
+            self.dashboard.set_top_list_visibility(
+                bool(top_cfg.get("cpu", False)),
+                bool(top_cfg.get("ram", False)),
+            )
         self.apply_startup_options()
 
     def apply_startup_options(self, force: bool = False) -> None:
@@ -2352,6 +2474,18 @@ def format_bytes(value: float) -> str:
     return f"{size:.1f} PB"
 
 
+def format_bytes_decimal(value: float) -> str:
+    units = ["B", "KB", "MB", "GB", "TB"]
+    size = float(value)
+    for unit in units:
+        if size < 1000:
+            if unit == "B":
+                return f"{size:.0f} {unit}"
+            return f"{size:.1f} {unit}"
+        size /= 1000
+    return f"{size:.1f} PB"
+
+
 def format_power_watts(value_w: float) -> str:
     if value_w >= 1.0:
         return f"{value_w:.2f} W"
@@ -2364,12 +2498,20 @@ def get_top_ram_processes(limit: int = 10) -> list[tuple[str, int, int]]:
         try:
             info = proc.info
             name = info.get("name") or f"PID {info.get('pid')}"
-            mem = info.get("memory_info")
-            if mem is None:
-                continue
-            rss = int(mem.rss)
+            mem_bytes = None
+            try:
+                mem_full = proc.memory_full_info()
+                if hasattr(mem_full, "uss") and mem_full.uss:
+                    mem_bytes = int(mem_full.uss)
+            except Exception:
+                mem_full = None
+            if mem_bytes is None:
+                mem = info.get("memory_info")
+                if mem is None:
+                    continue
+                mem_bytes = int(mem.rss)
             pid = int(info.get("pid") or 0)
-            items.append((name, rss, pid))
+            items.append((name, mem_bytes, pid))
         except (psutil.NoSuchProcess, psutil.AccessDenied):
             continue
         except Exception:
